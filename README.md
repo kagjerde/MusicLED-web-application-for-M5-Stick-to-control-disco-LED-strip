@@ -4,7 +4,7 @@
 
 MusicLED bruker den innebygde mikrofonen i M5StickS3 til å styre en adresserbar LED-stripe. Velg effekter direkte fra iPhone eller en annen enhet på samme Wi-Fi-nettverk.
 
-![MusicLED drum-pad-kontroll](docs/images/drum-pads.png)
+![MusicLED drum-pad-kontroll](drum-pads.png)
 
 > **Versjon:** v1.2 (prosjektets GitHub-versjon). Bildene er illustrasjoner av grensesnittet og LED-effektene, ikke fotografier av ferdig maskinvare.
 
