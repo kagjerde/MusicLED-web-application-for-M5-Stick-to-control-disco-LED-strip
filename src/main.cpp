@@ -47,22 +47,26 @@ ArduinoFFT<double> FFT(
 enum LedMode {
     RAINBOW_MUSIC,
     VU_METER,
-    FFT_3BAND,
+    COMET_BEAT,
     BPM_AUTO,
-    ENERGY_STROBE
+    ENERGY_STROBE,
+    FIRE_SPARKS
 };
 
 volatile LedMode mode = RAINBOW_MUSIC;
 volatile int requestedMode = -1;
+volatile bool requestedColor = false;
+volatile bool requestedCometColor = false;
 volatile uint8_t requestedBrightness = BRIGHTNESS;
 uint8_t currentBrightness = BRIGHTNESS;
 
 const char* modeNames[] = {
     "RAINBOW MUSIC",
     "VU METER",
-    "FFT 3-BAND",
+    "COMET BEAT",
     "BPM AUTO",
-    "ENERGY STROBE"
+    "ENERGY STROBE",
+    "FIRE & SPARKS"
 };
 
 // =====================================================
@@ -118,14 +122,25 @@ enum VUColorMode {
     VU_BLUE,
     VU_RED,
     VU_PURPLE,
-    VU_WHITE,
+    VU_GOLD,
     VU_RAINBOW,
     VU_CLASSIC
 };
 
-VUColorMode vuColorMode = VU_AUTO;
+VUColorMode vuColorMode = VU_CLASSIC;
 
 const int VU_COLOR_MODE_COUNT = 7;
+
+void nextVUColor() {
+    switch (vuColorMode) {
+        case VU_CLASSIC: vuColorMode = VU_BLUE; break;
+        case VU_BLUE: vuColorMode = VU_RED; break;
+        case VU_RED: vuColorMode = VU_PURPLE; break;
+        case VU_PURPLE: vuColorMode = VU_GOLD; break;
+        case VU_GOLD: vuColorMode = VU_RAINBOW; break;
+        default: vuColorMode = VU_CLASSIC; break;
+    }
+}
 
 int autoColorIndex = 0;
 
@@ -134,7 +149,7 @@ const char* vuColorNames[] = {
     "BLUE",
     "RED",
     "PURPLE",
-    "WHITE",
+    "GOLD",
     "RAINBOW",
     "CLASSIC VU"
 };
@@ -143,7 +158,7 @@ const char* autoColorNames[] = {
     "BLUE",
     "RED",
     "PURPLE",
-    "WHITE",
+    "GOLD",
     "RAINBOW",
     "CLASSIC VU"
 };
@@ -153,6 +168,11 @@ const float AUTO_SILENCE_THRESHOLD = 300.0f;
 
 uint32_t silenceStart = 0;
 bool silenceTriggered = false;
+
+// COMET: color selection is independent of VU colors.
+enum CometColor { COMET_CYAN, COMET_BLUE, COMET_PURPLE, COMET_RED, COMET_GOLD, COMET_RAINBOW };
+volatile CometColor cometColor = COMET_CYAN;
+void nextCometColor() { cometColor = (CometColor)(((int)cometColor + 1) % 6); }
 
 // =====================================================
 // VU PEAK
@@ -272,6 +292,90 @@ uint32_t lastBPMEvidence = 0;
 uint32_t nextBPMFlash = 0;
 
 uint32_t bpmFlashCount = 0;
+
+// Comet Beat: multiple overlapping comets, each with a 30-LED fading tail.
+// A new comet is launched for every detected/predicted BPM beat.
+// Travel speed follows tempo: one beat advances the head halfway up the strip.
+static const int COMET_TAIL_LEDS = 30;
+static const int COMET_MAX_ACTIVE = 8;
+uint32_t cometStarts[COMET_MAX_ACTIVE] = {0};
+uint8_t cometWriteIndex = 0;
+uint32_t cometLastBeat = 0;
+
+void resetComets() {
+    for (int n = 0; n < COMET_MAX_ACTIVE; n++) cometStarts[n] = 0;
+    cometWriteIndex = 0;
+    cometLastBeat = bpmFlashCount;
+}
+
+void updateComet() {
+    const uint32_t now = millis();
+
+    // BPM counter is incremented by the audio/clock loop.
+    // Each increment creates a separate comet; no restart of older comets.
+    if (cometLastBeat != bpmFlashCount) {
+        uint32_t beats = bpmFlashCount - cometLastBeat;
+        cometLastBeat = bpmFlashCount;
+        if (beats > COMET_MAX_ACTIVE) beats = COMET_MAX_ACTIVE;
+        for (uint32_t n = 0; n < beats; n++) {
+            cometStarts[cometWriteIndex] = now ? now : 1;
+            cometWriteIndex = (cometWriteIndex + 1) % COMET_MAX_ACTIVE;
+        }
+    }
+
+    // At 120 BPM, one beat is 500 ms; the head advances 34 LEDs
+    // during that time, so the previous comet is about halfway
+    // when the next launches. Use 500 ms until tempo is established.
+    float interval = beatIntervalMs > 0.0f ? beatIntervalMs : 500.0f;
+    interval = constrain(interval, 280.0f, 1200.0f);
+    const float ledsPerMs = (NUM_LEDS * 0.5f) / interval;
+
+    uint8_t red[NUM_LEDS] = {0};
+    uint8_t green[NUM_LEDS] = {0};
+    uint8_t blue[NUM_LEDS] = {0};
+
+    for (int n = 0; n < COMET_MAX_ACTIVE; n++) {
+        if (!cometStarts[n]) continue;
+        float head = (now - cometStarts[n]) * ledsPerMs;
+        if (head >= NUM_LEDS + COMET_TAIL_LEDS) {
+            cometStarts[n] = 0;
+            continue;
+        }
+        for (int i = 0; i < NUM_LEDS; i++) {
+            float distance = head - i;
+            if (distance < 0 || distance >= COMET_TAIL_LEDS) continue;
+
+            // Bright head, smooth fading tail, no sudden LED jumps.
+            float intensity = 1.0f - distance / COMET_TAIL_LEDS;
+            intensity *= intensity;
+            uint8_t v = (uint8_t)(255.0f * intensity);
+            uint8_t r=0, g=0, b=0;
+            switch (cometColor) {
+                case COMET_BLUE: b=v; break;
+                case COMET_PURPLE: r=(uint8_t)(v*.65f); b=v; break;
+                case COMET_RED: r=v; break;
+                case COMET_GOLD: r=v; g=(uint8_t)(v*.60f); break;
+                case COMET_RAINBOW: {
+                    uint32_t c = strip.gamma32(strip.ColorHSV((uint16_t)(i*65535L/NUM_LEDS)));
+                    r=(uint8_t)(((c>>16)&255)*intensity);
+                    g=(uint8_t)(((c>>8)&255)*intensity);
+                    b=(uint8_t)((c&255)*intensity);
+                    break;
+                }
+                default: g=(uint8_t)(v*.85f); b=v; break;
+            }
+            // Saturating addition keeps overlapping comet tails visible.
+            red[i] = (uint8_t)min(255, (int)red[i] + (int)r);
+            green[i] = (uint8_t)min(255, (int)green[i] + (int)g);
+            blue[i] = (uint8_t)min(255, (int)blue[i] + (int)b);
+        }
+    }
+
+    strip.clear();
+    for (int i = 0; i < NUM_LEDS; i++) {
+        strip.setPixelColor(i, strip.Color(red[i], green[i], blue[i]));
+    }
+}
 
 // =====================================================
 // LED TASK AND COMMANDS
@@ -481,7 +585,7 @@ uint32_t vuColorAt(int ledIndex) {
             return strip.Color(160, 0, 255);
 
         case 3:
-            return strip.Color(255, 255, 255);
+            return strip.Color(255, 175, 0);
 
         case 4: {
             uint16_t hue = (uint16_t)(
@@ -776,6 +880,7 @@ void acceptBPMOnset(uint32_t onsetTime) {
     lastBPMEvidence = onsetTime;
 
     if (!bpmLocked) {
+        if (mode == COMET_BEAT) bpmFlashCount++;
         requestFlash(FLASH_SINGLE);
         return;
     }
@@ -885,7 +990,7 @@ void updateBPMDetector(
 
 void updateBPMClock() {
     if (
-        mode != BPM_AUTO ||
+        (mode != BPM_AUTO && mode != COMET_BEAT) ||
         !bpmLocked ||
         beatIntervalMs <= 0.0f
     ) {
@@ -1136,7 +1241,7 @@ void analyzeAudio() {
         }
 
         if (
-            mode == BPM_AUTO &&
+            (mode == BPM_AUTO || mode == COMET_BEAT) &&
             freq >= BPM_BASS_MIN_HZ &&
             freq < BPM_BASS_MAX_HZ
         ) {
@@ -1225,7 +1330,7 @@ void analyzeAudio() {
     // BPM AUTO:
     // dedicated bass detector
     if (
-        mode == BPM_AUTO &&
+        (mode == BPM_AUTO || mode == COMET_BEAT) &&
         bassBins > 0
     ) {
         float bassMagnitude =
@@ -1378,6 +1483,48 @@ void updateFFT() {
 // LED TASK
 // =====================================================
 
+// Fire2012-inspired one-dimensional flame with audio-triggered sparks.
+// Runs only on the LED task: no network polling or extra audio sampling.
+uint8_t fireHeat[NUM_LEDS] = {};
+
+void updateFireSparks() {
+    // Cooling and upward diffusion. LED 0 is the base of the flame.
+    for (int i = 0; i < NUM_LEDS; ++i) {
+        int cooling = random(0, 14);
+        fireHeat[i] = (fireHeat[i] > cooling) ? fireHeat[i] - cooling : 0;
+    }
+    for (int i = NUM_LEDS - 1; i >= 2; --i) {
+        fireHeat[i] = (uint8_t)(((int)fireHeat[i-1] + 2*(int)fireHeat[i-2]) / 3);
+    }
+    if (random(100) < 70) {
+        int y = random(min(NUM_LEDS, 8));
+        fireHeat[y] = (uint8_t)min(255L, (long)fireHeat[y] + random(150, 256));
+    }
+
+    // Sparse music-reactive sparks, decaying independently of the fire.
+    static uint8_t spark[NUM_LEDS] = {};
+    float activity = constrain((signalRms - 250.0f) / 4500.0f, 0.0f, 1.0f);
+    for (int i = 0; i < NUM_LEDS; ++i) {
+        spark[i] = (spark[i] > 38) ? spark[i] - 38 : 0;
+    }
+    if (activity > 0.08f && random(1000) < (int)(activity * 220.0f)) {
+        spark[random(NUM_LEDS)] = 255;
+    }
+    for (int i = 0; i < NUM_LEDS; ++i) {
+        uint8_t h = fireHeat[i];
+        uint8_t r = (uint8_t)min(255, (int)h * 3);
+        uint8_t g = (h < 90) ? 0 : (uint8_t)min(210, ((int)h - 90) * 2);
+        uint8_t b = (h > 210) ? (uint8_t)((h - 210) / 3) : 0;
+        if (spark[i]) {
+            uint8_t a = spark[i];
+            r = max(r, a);
+            g = max(g, (uint8_t)((int)a * 92 / 100));
+            b = max(b, (uint8_t)((int)a * 68 / 100));
+        }
+        strip.setPixelColor(i, strip.Color(r, g, b));
+    }
+}
+
 void ledTask(void* parameter) {
     LedMode previousMode = RAINBOW_MUSIC;
 
@@ -1397,6 +1544,7 @@ void ledTask(void* parameter) {
             strip.show();
 
             outputOn = false;
+            if (currentMode == COMET_BEAT) resetComets();
             previousMode = currentMode;
         }
 
@@ -1512,8 +1660,11 @@ void ledTask(void* parameter) {
                 ) {
                     updateVU();
                 }
-                else {
-                    updateFFT();
+                else if (currentMode == FIRE_SPARKS) {
+                    updateFireSparks();
+                }
+                else if (currentMode == COMET_BEAT) {
+                    updateComet();
                 }
 
                 strip.show();
@@ -1733,41 +1884,14 @@ void updateScreen() {
             )
         );
     }
-    else if (mode == FFT_3BAND) {
-        const char* labels[3] = {
-            "BASS",
-            "MID",
-            "TREBLE"
-        };
-
-        uint16_t colors[3] = {
-            TFT_BLUE,
-            TFT_GREEN,
-            TFT_ORANGE
-        };
-
-        for (int b = 0; b < 3; b++) {
-            int y =
-                27 + b * 29;
-
-            canvas.setCursor(10, y);
-            canvas.print(labels[b]);
-
-            canvas.setCursor(90, y);
-            canvas.printf(
-                "%.2f",
-                levels[b]
-            );
-
-            drawBar(
-                10,
-                y + 12,
-                w,
-                10,
-                levels[b],
-                colors[b]
-            );
-        }
+    else if (mode == COMET_BEAT) {
+        canvas.setCursor(10, 27);
+        canvas.print("COMET BEAT");
+        canvas.setCursor(10, 48);
+        if (estimatedBPM > 0) canvas.printf("BPM %.1f", estimatedBPM);
+        else canvas.print("SEARCHING BPM");
+        canvas.setCursor(10, 70);
+        canvas.print(bpmLocked ? "LOCKED" : "LISTENING");
     }
     else if (mode == BPM_AUTO) {
         canvas.setCursor(10, 27);
@@ -1848,6 +1972,15 @@ void updateScreen() {
         canvas.print(
             "DOUBLE FLASH"
         );
+    }
+
+    else if (mode == FIRE_SPARKS) {
+        canvas.setCursor(10, 35);
+        canvas.print("FIRE & SPARKS");
+        canvas.setCursor(10, 58);
+        canvas.print("MUSIC REACTIVE");
+        canvas.setCursor(10, 81);
+        canvas.print("FLAME + SPARKS");
     }
 
     canvas.setTextColor(
@@ -1978,23 +2111,77 @@ void showSetupPage() {
 }
 
 void showControlPage() {
-    String h = htmlHeader("MusicLED Control");
-    h += F("<p>Wi-Fi: "); h += WiFi.SSID(); h += F("<br>IP: ");
-    h += WiFi.localIP().toString(); h += F("</p>");
-    h += F("<label>LED-modus</label><select id='mode' onchange='setMode()'>");
-    for (int i = 0; i < 5; i++) {
-        h += F("<option value='"); h += i; h += F("'");
-        if ((int)mode == i) h += F(" selected");
-        h += F(">"); h += modeNames[i]; h += F("</option>");
-    }
-    h += F("</select><label>Lysstyrke: <span id='level'>");
+    String h = F(R"HTML(<!doctype html><html lang="no"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b1020"><title>MusicLED Pads</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0b1020;color:#f4f7ff;font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif}
+.wrap{max-width:540px;margin:auto;min-height:100dvh;padding:22px 16px max(22px,env(safe-area-inset-bottom));display:flex;flex-direction:column}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+h1{font-size:23px;letter-spacing:.04em;margin:0}.sub{font-size:12px;color:#8e9db8;margin-top:4px}
+.dot{width:9px;height:9px;background:#3bdca4;border-radius:50%;box-shadow:0 0 12px #3bdca4}
+.pads{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.pad{aspect-ratio:1/1;min-height:125px;border:1px solid #35405c;border-radius:22px;background:linear-gradient(145deg,#252e45,#151c2f);color:#eaf1ff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:13px;box-shadow:inset 0 1px #ffffff16,0 7px 0 #080c17;touch-action:manipulation;cursor:pointer;transition:transform .08s,background .1s,border-color .1s}
+.pad:active{transform:translateY(5px);box-shadow:inset 0 1px #ffffff16,0 2px 0 #080c17}
+.pad.active{background:linear-gradient(145deg,#174a68,#133047);border-color:#55d9ff;box-shadow:inset 0 0 0 1px #55d9ff55,0 6px 0 #071b2b,0 0 18px #28b9fa2e}
+.pad .symbol{width:55px;height:55px;display:grid;place-items:center}.symbol svg{width:52px;height:52px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.pad .name{font-size:13px;font-weight:750;letter-spacing:.065em;text-align:center}.pad .hint{font-size:10px;color:#a1afc6;margin-top:-10px}
+.footer{margin-top:auto;padding-top:25px;display:flex;align-items:center;justify-content:space-between;color:#93a2bb;font-size:13px}
+.gear{border:1px solid #38455f;background:#202a40;color:white;width:51px;height:51px;border-radius:15px;display:grid;place-items:center;text-decoration:none}
+.gear svg{width:25px;height:25px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#message{min-height:20px}
+</style></head><body><main class="wrap"><header class="top"><div><h1>MUSICLED</h1><div class="sub">LIVE PERFORMANCE PADS</div></div><div class="dot"></div></header>
+<section class="pads" id="pads">
+<button class="pad" data-mode="0" onclick="choose(0)"><span class="symbol"><svg viewBox="0 0 64 64"><path d="M8 39c8-22 16-22 24 0s16 22 24 0"/><path d="M8 24c8-22 16-22 24 0s16 22 24 0"/></svg></span><span class="name">RAINBOW</span><span class="hint">MUSIC</span></button>
+<button class="pad" data-mode="1" onclick="choose(1)"><span class="symbol"><svg viewBox="0 0 64 64"><rect x="10" y="40" width="8" height="14" rx="2"/><rect x="23" y="29" width="8" height="25" rx="2"/><rect x="36" y="18" width="8" height="36" rx="2"/><rect x="49" y="9" width="8" height="45" rx="2"/></svg></span><span class="name">VU METER</span><span class="hint">LEVEL</span></button>
+<button class="pad" data-mode="2" onclick="choose(2)"><span class="symbol"><svg viewBox="0 0 64 64"><path d="M10 48c15 0 19-28 42-32"/><circle cx="52" cy="16" r="6"/><path d="M7 55l15-17M15 56l14-13"/></svg></span><span class="name">COMET</span><span class="hint">CYAN</span></button>
+<button class="pad" data-mode="3" onclick="choose(3)"><span class="symbol"><svg viewBox="0 0 64 64"><path d="M9 33h11l7-16 10 31 7-15h11"/><path d="M22 9a25 25 0 1 1-13 43"/></svg></span><span class="name">BPM AUTO</span><span class="hint">BEAT</span></button>
+<button class="pad" data-mode="4" onclick="choose(4)"><span class="symbol"><svg viewBox="0 0 64 64"><path d="M36 5 14 35h16l-3 24 23-34H34z"/></svg></span><span class="name">ENERGY</span><span class="hint">STROBE</span></button>
+<button class="pad" data-mode="5" onclick="choose(5)"><span class="symbol"><svg viewBox="0 0 64 64"><path d="M34 5c4 14-6 18-3 27 6-3 9-9 10-14 19 20 15 37-8 40C10 59 8 42 18 29c1 11 7 13 9 13-5-14 0-27 7-37z"/></svg></span><span class="name">FIRE</span><span class="hint">&amp; SPARKS</span></button>
+</section><footer class="footer"><span id="message">Klar</span><a class="gear" href="/settings" aria-label="Innstillinger"><svg viewBox="0 0 24 24"><path d="M10 2h4l.8 2.6 2 .9 2.4-1.2 2.8 2.8-1.2 2.4.9 2L24 12l-2.3 1.5-.9 2 1.2 2.4-2.8 2.8-2.4-1.2-2 .9L14 23h-4l-.8-2.6-2-.9-2.4 1.2L2 17.9l1.2-2.4-.9-2L0 12l2.3-1.5.9-2L2 6.1l2.8-2.8 2.4 1.2 2-.9z" transform="translate(1 1) scale(.91)"/><circle cx="12" cy="12" r="3"/></svg></a></footer></main>
+<script>
+let active=)HTML");
+    h += String((int)mode);
+    h += F(R"HTML(;
+function highlight(n){active=n;document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',Number(b.dataset.mode)===n));}
+const vuColors=['CLASSIC','BLUE','RED','PURPLE','GOLD','RAINBOW'];
+const cometColors=['CYAN','BLUE','PURPLE','RED','GOLD','RAINBOW'];
+let vuIndex=)HTML");
+    // Initial VU color is injected by C++ for consistency with the physical button.
+    const int vuIndex = vuColorMode == VU_CLASSIC ? 0 :
+        vuColorMode == VU_BLUE ? 1 : vuColorMode == VU_RED ? 2 :
+        vuColorMode == VU_PURPLE ? 3 : vuColorMode == VU_GOLD ? 4 : 5;
+    h += String(vuIndex);
+    h += F(R"HTML(;
+let cometIndex=)HTML");
+    h += String((int)cometColor);
+    h += F(R"HTML(;
+function updateVUHint(){document.querySelector('[data-mode="1"] .hint').textContent=vuColors[vuIndex];}
+async function choose(n){const msg=document.getElementById('message');try{
+const vuCycle=(n===1&&active===1);
+const cometCycle=(n===2&&active===2);
+const url=vuCycle?'/api/color':cometCycle?'/api/comet-color':'/api/mode?value='+n;
+const r=await fetch(url,{cache:'no-store'});
+if(!r.ok)throw Error();if(vuCycle)vuIndex=(vuIndex+1)%vuColors.length;
+if(cometCycle)cometIndex=(cometIndex+1)%cometColors.length;
+highlight(n);updateVUHint();document.querySelector('[data-mode="2"] .hint').textContent=cometColors[cometIndex];
+msg.textContent=vuCycle?'VU: '+vuColors[vuIndex]:cometCycle?'COMET: '+cometColors[cometIndex]:'Modus valgt';
+}catch(e){msg.textContent='Ingen kontakt';}}
+highlight(active);updateVUHint();document.querySelector('[data-mode="2"] .hint').textContent=cometColors[cometIndex];
+</script></body></html>)HTML");
+    webServer.send(200, "text/html; charset=utf-8", h);
+}
+
+void showSettingsPage() {
+    String h = htmlHeader("MusicLED innstillinger");
+    h += F("<p><a href='/'>← Tilbake til pads</a></p>"
+           "<label>Lysstyrke: <span id='level'>");
     h += String(currentBrightness);
     h += F("</span></label><input type='range' min='1' max='255' value='");
     h += String(currentBrightness);
     h += F("' oninput='document.getElementById(\"level\").textContent=this.value' "
            "onchange='fetch(\"/api/brightness?value=\"+this.value)'>"
-           "<p><a href='/wifi'>Endre Wi-Fi</a></p>"
-           "<script>function setMode(){fetch('/api/mode?value='+document.getElementById('mode').value)}</script>");
+           "<p><a href='/wifi'>Endre Wi-Fi-nettverk</a></p>");
     h += htmlFooter();
     webServer.send(200, "text/html; charset=utf-8", h);
 }
@@ -2022,12 +2209,9 @@ void beginWiFi() {
             delay(100);
         }
     }
-    
     if (WiFi.status() == WL_CONNECTED) {
-        Serial.print("MusicLED IP: ");
-        Serial.println(WiFi.localIP());
-
-        if (MDNS.begin("musicled")) {
+        Serial.print("MusicLED IP: "); Serial.println(WiFi.localIP());
+        if (MDNS.begin(HOST_NAME)) {
             MDNS.addService("http", "tcp", 80);
             Serial.println("Web: http://musicled.local");
         }
@@ -2038,6 +2222,9 @@ void beginWiFi() {
     webServer.on("/", HTTP_GET, []() {
         if (setupAPActive) showSetupPage();
         else showControlPage();
+    });
+    webServer.on("/settings", HTTP_GET, []() {
+        if (setupAPActive) showSetupPage(); else showSettingsPage();
     });
     webServer.on("/wifi", HTTP_GET, showSetupPage);
     webServer.on("/save", HTTP_POST, []() {
@@ -2056,10 +2243,20 @@ void beginWiFi() {
     webServer.on("/api/mode", HTTP_GET, []() {
         if (setupAPActive) { webServer.send(403, "text/plain", "Setup mode"); return; }
         int value = webServer.arg("value").toInt();
-        if (!webServer.hasArg("value") || value < 0 || value > 4) {
+        if (!webServer.hasArg("value") || value < 0 || value > 5) {
             webServer.send(400, "text/plain", "Invalid mode"); return;
         }
         requestedMode = value;
+        webServer.send(200, "text/plain", "OK");
+    });
+    webServer.on("/api/color", HTTP_GET, []() {
+        if (setupAPActive) { webServer.send(403, "text/plain", "Setup mode"); return; }
+        requestedColor = true;
+        webServer.send(200, "text/plain", "OK");
+    });
+    webServer.on("/api/comet-color", HTTP_GET, []() {
+        if (setupAPActive) { webServer.send(403, "text/plain", "Setup mode"); return; }
+        requestedCometColor = true;
         webServer.send(200, "text/plain", "OK");
     });
     webServer.on("/api/brightness", HTTP_GET, []() {
@@ -2096,17 +2293,17 @@ void handleWeb() {
 
 void handleButtons() {
     if (M5.BtnA.wasPressed()) {
-        requestedMode = ((int)mode + 1) % 5;
+        requestedMode = ((int)mode + 1) % 6;
     }
 
+    if (mode == COMET_BEAT && M5.BtnB.wasPressed()) {
+        nextCometColor();
+    }
     if (
         mode == VU_METER &&
         M5.BtnB.wasPressed()
     ) {
-        vuColorMode = (VUColorMode)(
-            ((int)vuColorMode + 1) %
-            VU_COLOR_MODE_COUNT
-        );
+        nextVUColor();
 
         silenceStart = 0;
         silenceTriggered = false;
@@ -2212,6 +2409,18 @@ void loop() {
         requestedMode = -1;
         applyModeChange((LedMode)next);
     }
+    if (requestedColor) {
+        requestedColor = false;
+        if (mode != VU_METER) applyModeChange(VU_METER);
+        nextVUColor();
+        silenceStart = 0;
+        silenceTriggered = false;
+    }
+    if (requestedCometColor) {
+        requestedCometColor = false;
+        if (mode != COMET_BEAT) applyModeChange(COMET_BEAT);
+        nextCometColor();
+    }
     handleWeb();
 
     analyzeAudio();
@@ -2223,7 +2432,7 @@ void loop() {
         updatePeak();
     }
 
-    if (mode == BPM_AUTO) {
+    if (mode == BPM_AUTO || mode == COMET_BEAT) {
         updateBPMClock();
     }
 
