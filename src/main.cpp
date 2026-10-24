@@ -4,6 +4,11 @@
 #include <Adafruit_NeoPixel.h>
 #include <arduinoFFT.h>
 #include <math.h>
+#include <WiFi.h>
+#include <WebServer.h>
+#include <Preferences.h>
+#include <DNSServer.h>
+#include <ESPmDNS.h>
 
 // =====================================================
 // HARDWARE
@@ -48,6 +53,9 @@ enum LedMode {
 };
 
 volatile LedMode mode = RAINBOW_MUSIC;
+volatile int requestedMode = -1;
+volatile uint8_t requestedBrightness = BRIGHTNESS;
+uint8_t currentBrightness = BRIGHTNESS;
 
 const char* modeNames[] = {
     "RAINBOW MUSIC",
@@ -1378,6 +1386,10 @@ void ledTask(void* parameter) {
     uint32_t lastNormalLED = 0;
 
     while (true) {
+        if (currentBrightness != requestedBrightness) {
+            currentBrightness = requestedBrightness;
+            strip.setBrightness(currentBrightness);
+        }
         LedMode currentMode = mode;
 
         if (currentMode != previousMode) {
@@ -1899,27 +1911,192 @@ void resetEnergy() {
 }
 
 // =====================================================
+// WIFI SETUP AND WEB CONTROL (v1.1)
+// =====================================================
+
+WebServer webServer(80);
+DNSServer dnsServer;
+Preferences wifiPreferences;
+
+const char* SETUP_SSID = "MusicLED-Setup";
+const char* SETUP_PASSWORD = "MusicLED123"; // Change before regular use (8+ chars)
+const char* HOST_NAME = "musicled";
+bool setupAPActive = false;
+bool webStarted = false;
+
+void applyModeChange(LedMode newMode) {
+    if (newMode == mode) return;
+    clearFlashSchedule();
+    resetBPM();
+    resetEnergy();
+    vuPeak = 0.0f;
+    lastPeakUpdate = 0;
+    silenceStart = 0;
+    silenceTriggered = false;
+    mode = newMode;
+}
+
+String htmlHeader(const char* title) {
+    String h = F("<!doctype html><html lang='no'><head><meta charset='utf-8'>"
+                 "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+                 "<style>body{font:16px system-ui;background:#101827;color:#f2f5fa;"
+                 "max-width:520px;margin:30px auto;padding:16px}"
+                 "button,input,select{font:inherit;padding:12px;border-radius:9px;margin:6px 0}"
+                 "button{background:#1677ee;color:white;border:0;cursor:pointer}"
+                 "a{color:#80bdff}.panel{background:#202d40;padding:18px;border-radius:14px}"
+                 "label{display:block;margin-top:14px}input,select{box-sizing:border-box;width:100%}"
+                 "</style><title>");
+    h += title;
+    h += F("</title></head><body><h2>");
+    h += title;
+    h += F("</h2><div class='panel'>");
+    return h;
+}
+
+String htmlFooter() { return F("</div></body></html>"); }
+
+void showSetupPage() {
+    String h = htmlHeader("MusicLED Wi-Fi oppsett");
+    h += F("<p>Velg et 2,4 GHz-nettverk og skriv inn passordet.</p>"
+           "<form method='POST' action='/save'>"
+           "<label>Wi-Fi-nettverk</label><select name='ssid'>");
+    int n = WiFi.scanNetworks();
+    for (int i = 0; i < n && i < 25; i++) {
+        String ssid = WiFi.SSID(i);
+        ssid.replace("&", "&amp;"); ssid.replace("<", "&lt;");
+        ssid.replace(">", "&gt;"); ssid.replace("\"", "&quot;");
+        ssid.replace("'", "&#39;");
+        h += F("<option value='"); h += ssid; h += F("'>");
+        h += ssid; h += F("</option>");
+    }
+    WiFi.scanDelete();
+    h += F("</select><label>Passord</label>"
+           "<input name='password' type='password' autocomplete='off' required>"
+           "<button type='submit'>Lagre og koble til</button></form>");
+    h += htmlFooter();
+    webServer.send(200, "text/html; charset=utf-8", h);
+}
+
+void showControlPage() {
+    String h = htmlHeader("MusicLED Control");
+    h += F("<p>Wi-Fi: "); h += WiFi.SSID(); h += F("<br>IP: ");
+    h += WiFi.localIP().toString(); h += F("</p>");
+    h += F("<label>LED-modus</label><select id='mode' onchange='setMode()'>");
+    for (int i = 0; i < 5; i++) {
+        h += F("<option value='"); h += i; h += F("'");
+        if ((int)mode == i) h += F(" selected");
+        h += F(">"); h += modeNames[i]; h += F("</option>");
+    }
+    h += F("</select><label>Lysstyrke: <span id='level'>");
+    h += String(currentBrightness);
+    h += F("</span></label><input type='range' min='1' max='255' value='");
+    h += String(currentBrightness);
+    h += F("' oninput='document.getElementById(\"level\").textContent=this.value' "
+           "onchange='fetch(\"/api/brightness?value=\"+this.value)'>"
+           "<p><a href='/wifi'>Endre Wi-Fi</a></p>"
+           "<script>function setMode(){fetch('/api/mode?value='+document.getElementById('mode').value)}</script>");
+    h += htmlFooter();
+    webServer.send(200, "text/html; charset=utf-8", h);
+}
+
+void beginSetupAP() {
+    WiFi.mode(WIFI_AP_STA);
+    WiFi.softAP(SETUP_SSID, SETUP_PASSWORD);
+    dnsServer.start(53, "*", WiFi.softAPIP());
+    setupAPActive = true;
+    Serial.print("Setup AP: "); Serial.println(SETUP_SSID);
+    Serial.print("Setup IP: "); Serial.println(WiFi.softAPIP());
+}
+
+void beginWiFi() {
+    wifiPreferences.begin("musicled-wifi", false);
+    String ssid = wifiPreferences.getString("ssid", "");
+    String password = wifiPreferences.getString("password", "");
+    WiFi.setHostname(HOST_NAME);
+    if (!ssid.isEmpty()) {
+        WiFi.mode(WIFI_STA);
+        WiFi.begin(ssid.c_str(), password.c_str());
+        Serial.print("Connecting to "); Serial.println(ssid);
+        uint32_t started = millis();
+        while (WiFi.status() != WL_CONNECTED && millis() - started < 10000) {
+            delay(100);
+        }
+    }
+    
+    if (WiFi.status() == WL_CONNECTED) {
+        Serial.print("MusicLED IP: ");
+        Serial.println(WiFi.localIP());
+
+        if (MDNS.begin("musicled")) {
+            MDNS.addService("http", "tcp", 80);
+            Serial.println("Web: http://musicled.local");
+        }
+    } else {
+        beginSetupAP();
+    }
+
+    webServer.on("/", HTTP_GET, []() {
+        if (setupAPActive) showSetupPage();
+        else showControlPage();
+    });
+    webServer.on("/wifi", HTTP_GET, showSetupPage);
+    webServer.on("/save", HTTP_POST, []() {
+        String ssid = webServer.arg("ssid");
+        String password = webServer.arg("password");
+        if (ssid.isEmpty() || ssid.length() > 32 || password.length() > 63) {
+            webServer.send(400, "text/plain", "Ugyldig SSID/passord"); return;
+        }
+        wifiPreferences.putString("ssid", ssid);
+        wifiPreferences.putString("password", password);
+        webServer.send(200, "text/html; charset=utf-8",
+            "<h2>Lagret!</h2><p>Enheten starter paa nytt. Koble telefonen til hjemmenettverket.</p>");
+        delay(500);
+        ESP.restart();
+    });
+    webServer.on("/api/mode", HTTP_GET, []() {
+        if (setupAPActive) { webServer.send(403, "text/plain", "Setup mode"); return; }
+        int value = webServer.arg("value").toInt();
+        if (!webServer.hasArg("value") || value < 0 || value > 4) {
+            webServer.send(400, "text/plain", "Invalid mode"); return;
+        }
+        requestedMode = value;
+        webServer.send(200, "text/plain", "OK");
+    });
+    webServer.on("/api/brightness", HTTP_GET, []() {
+        if (setupAPActive) { webServer.send(403, "text/plain", "Setup mode"); return; }
+        int value = webServer.arg("value").toInt();
+        if (!webServer.hasArg("value") || value < 1 || value > 255) {
+            webServer.send(400, "text/plain", "Invalid brightness"); return;
+        }
+        requestedBrightness = (uint8_t)value;
+        webServer.send(200, "text/plain", "OK");
+    });
+    webServer.onNotFound([]() {
+        if (setupAPActive) {
+            webServer.sendHeader("Location", "http://192.168.4.1/", true);
+            webServer.send(302, "text/plain", "");
+        } else webServer.send(404, "text/plain", "Not found");
+    });
+    webServer.begin();
+    webStarted = true;
+}
+
+void handleWeb() {
+    if (!webStarted) return;
+    if (setupAPActive) dnsServer.processNextRequest();
+    webServer.handleClient();
+    if (!setupAPActive && WiFi.status() != WL_CONNECTED) {
+        beginSetupAP();
+    }
+}
+
+// =====================================================
 // BUTTONS
 // =====================================================
 
 void handleButtons() {
     if (M5.BtnA.wasPressed()) {
-        clearFlashSchedule();
-
-        LedMode newMode = (LedMode)(
-            ((int)mode + 1) % 5
-        );
-
-        resetBPM();
-        resetEnergy();
-
-        vuPeak = 0.0f;
-        lastPeakUpdate = 0;
-
-        silenceStart = 0;
-        silenceTriggered = false;
-
-        mode = newMode;
+        requestedMode = ((int)mode + 1) % 5;
     }
 
     if (
@@ -2019,6 +2196,7 @@ void setup() {
         "Music Controller - BPM Auto v2"
     );
 
+    beginWiFi();
     updateScreen();
 }
 
@@ -2029,6 +2207,12 @@ void setup() {
 void loop() {
     M5.update();
     handleButtons();
+    if (requestedMode >= 0) {
+        int next = requestedMode;
+        requestedMode = -1;
+        applyModeChange((LedMode)next);
+    }
+    handleWeb();
 
     analyzeAudio();
 
