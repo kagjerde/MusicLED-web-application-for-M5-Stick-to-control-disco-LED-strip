@@ -2,54 +2,52 @@
 
 **Musikkstyrt WS2812 LED-stripe med M5StickS3 og mobilvennlig webkontroll.**
 
-MusicLED bruker den innebygde mikrofonen i M5StickS3 til å styre en adresserbar LED-stripe. Velg effekter direkte fra iPhone eller en annen enhet på samme Wi-Fi-nettverk.
+MusicLED bruker mikrofonen i M5StickS3 til å styre en adresserbar LED-stripe. Effekter velges fra en telefon på samme Wi-Fi-nettverk.
 
-![MusicLED drum-pad-kontroll](drum-pads.png)
+**Stabil versjon: v2.0 – Random Play** (testet og godkjent på M5StickS3).
 
-> **Versjon:** v1.2 (prosjektets GitHub-versjon). Bildene er illustrasjoner av grensesnittet og LED-effektene, ikke fotografier av ferdig maskinvare.
+![MusicLED-kontroll (eldre illustrasjon)](drum-pads.png)
 
-## Funksjoner
+> Illustrasjonsbildene i dette repositoriet kan vise et eldre grensesnitt.
 
-- **Seks store drum-pads**, arrangert 2 × 3 for mobilskjerm.
-- **Live modusbytte** uten å laste inn siden på nytt.
-- **Gjenta trykk på VU Meter** for å bla mellom fargevarianter.
-- **Gjenta trykk på Comet** for å bla mellom fargevarianter.
-- **Egen innstillingsside** via tannhjul, blant annet lysstyrke og Wi-Fi.
-- **Wi-Fi-oppsett via tilgangspunkt**, med lagring av nettverksinformasjon.
-- **Lokal webadresse:** `http://musicled.local` (dersom mDNS fungerer på nettverket).
-- Ingen kontinuerlig lydnivåmåler på websiden.
+## Effekter
 
-## LED-effekter
+| Hovedmodus | Beskrivelse |
+|---|---|
+| **Wave** | Standard regnbueeffekt, Top, Bottom og Ping Pong. Løpelys kan starte på registrerte basslag. |
+| **VU Meter** | Normal nivåmåler eller Center VU, som vokser fra midten mot endene. |
+| **Particles** | Bass Explosion, Diffusion, Breathe, Streamer, Bouncing Balls og Fireworks. |
+| **BPM Auto** | Lysblink som følger registrert eller manuelt tempo. |
+| **Energy Strobe** | Musikksynkroniserte blink med valg av antall blink per slag. |
+| **Fire & Sparks** | Flamme med musikkstyrte gnister. |
 
-| Pad | Effekt | Beskrivelse |
-|---|---|---|
-| 🌈 Rainbow Music | Regnbue | Fargerik effekt som reagerer på musikken |
-| 📊 VU Meter | Nivåmåler | Klassisk grønn–gul–rød skala, samt blå, rød, lilla, gull og regnbue |
-| ☄️ Comet Beat | Kometer | Nye kometer startes på BPM-slag; omtrent 30 LED-er lang hale og overlappende kometer |
-| 💓 BPM Auto | Rytme | Musikkstyrt rytmeeffekt basert på detektert tempo |
-| ⚡ Energy Strobe | Energi | Dynamiske lysblink basert på musikken |
-| 🔥 Fire & Sparks | Flamme | Simulert ild med musikkstyrte gnister |
+### Particles
 
-### Comet Beat
+- **Bass Explosion:** Lyspulser fra midten og ut til begge ender.
+- **Diffusion:** Brede, myke fargefelt som sprer seg.
+- **Breathe:** Hele stripen pulserer med musikken.
+- **Streamer:** Bevegelige lysstrømmer.
+- **Bouncing Balls:** Lysballer skytes opp fra LED 0 og spretter med gravitasjon og varierende høyde.
+- **Fireworks:** Hvit rakett skytes opp fra LED 0 og eksploderer i fargede fragmenter, med varierende høyde og spredning.
 
-![Illustrasjon av Comet Beat](docs/images/comet-beat.png)
+**Betjening:** Trykk på en hovedknapp for å velge effekt. Enkelttrykk på aktiv knapp bytter farge eller effektens spesialvalg; dobbelttrykk på Wave, VU Meter og Particles bytter variant.
 
-En ny komet starter ved begynnelsen av stripen på hvert registrerte eller beregnede BPM-slag. Kometene fortsetter uavhengig av hverandre, slik at flere kan være synlige samtidig. Hastigheten tilpasses tempoet; målet er at en komet er omtrent halvveis når neste starter.
+## Random Play (v2.0)
 
-**Farger:** cyan, blå, lilla, rød, gull og regnbue. Trykk på den aktive Comet-paden igjen for neste farge.
+Den lille **RANDOM**-knappen nederst på hovedskjermen starter automatisk effektvalg.
 
-### Fire & Sparks
-
-![Illustrasjon av Fire & Sparks](docs/images/fire-sparks.png)
-
-En flammeeffekt i varme farger går kontinuerlig. Musikk kan utløse korte, lyse gnister over flammen.
+- Første trykk aktiverer Random og velger en tilfeldig effekt, variant og farge.
+- Neste trykk velger umiddelbart en ny kombinasjon.
+- Automatisk bytte skjer **først etter minst tre minutter med gjeldende effekt OG minst tre sekunder sammenhengende stillhet**.
+- Et manuelt valg av hovedmodus avslutter Random.
+- Samme kombinasjon velges ikke to ganger etter hverandre.
 
 ## Maskinvare
 
-- **M5StickS3** (ESP32-S3) med innebygd mikrofon og skjerm
-- **WS2812-kompatibel LED-stripe**, konfigurert for **68 LED-er**
-- **Ekstern, regulert 5 V strømforsyning** dimensjonert for LED-stripen
-- Datatilkobling fra **GPIO1** på M5StickS3
+- **M5StickS3** (ESP32-S3), med innebygd mikrofon og skjerm
+- **WS2812-kompatibel LED-stripe**, standard 68 LED-er
+- **Datapin:** GPIO1 som standard; LED-antall og GPIO kan konfigureres i innstillingene
+- **Ekstern regulert 5 V strømforsyning** til LED-stripen
 
 ### Kobling
 
@@ -61,42 +59,27 @@ M5StickS3 GND    ─────┬───── GND på WS2812
 5 V strømforsyning + ─────── +5V på WS2812
 ```
 
-**Viktig:** Felles jord er nødvendig. Ikke forsyn hele LED-stripen fra M5StickS3. Bruk riktig dataretning (`DIN`, ikke `DOUT`). En seriemotstand på datalinjen og kondensator ved LED-stripeinngangen anbefales. Vurder nivåskifter dersom 3,3 V datasignal ikke er stabilt med din 5 V stripe.
+**Viktig:** Bruk felles jord. Ikke forsyn hele LED-stripen fra M5StickS3. Kontroller at du bruker `DIN`, ikke `DOUT`. Seriemotstand på datalinjen og kondensator ved stripeinngangen anbefales; vurder nivåskifter dersom 3,3 V datasignal ikke er stabilt.
 
 ## Kom i gang
 
-1. Installer **Visual Studio Code** og **PlatformIO**.
-2. Åpne prosjektmappen i PlatformIO.
-3. Kontroller `platformio.ini` og installer prosjektets biblioteker: **M5Unified**, **Adafruit NeoPixel** og **arduinoFFT**.
-4. Kontroller innstillingene øverst i `src/main.cpp`:
+1. Installer **Visual Studio Code** med **PlatformIO**.
+2. Åpne prosjektmappen og kontroller `platformio.ini`.
+3. Bygg prosjektet (**Build**) og last det opp til M5StickS3 (**Upload**).
+4. Ved første oppstart: koble telefonen til **MusicLED-Setup** med passord **MusicLED123**.
+5. Åpne `http://192.168.4.1` og konfigurer Wi-Fi.
+6. Åpne **http://musicled.local/** fra en enhet på samme nettverk. Dersom mDNS ikke fungerer, bruk enhetens IP-adresse.
 
-   ```cpp
-   #define LED_PIN 1
-   #define NUM_LEDS 68
-   #define BRIGHTNESS 60
-   ```
+> **Sikkerhet:** Endre standardpassordet for oppsett-AP før vanlig bruk. Webkontrollen er laget for et betrodd lokalnettverk, ikke direkte eksponering mot internett.
 
-5. Bygg prosjektet med **Build**, og last det opp med **Upload**.
-6. Ved første oppstart, koble telefonen til Wi-Fi-nettverket **`MusicLED-Setup`** med passordet **`MusicLED123`**.
-7. Åpne **`http://192.168.4.1`**, og skriv inn hjemmenettverkets Wi-Fi-informasjon.
-8. Når enheten har koblet seg til hjemmenettverket, åpne **`http://musicled.local`** på telefonen. Hvis adressen ikke fungerer, bruk IP-adressen som vises i seriellmonitoren.
+## Innstillinger
 
-> **Sikkerhet:** Endre standardpassordet for oppsett-AP i kildekoden før vanlig bruk. Webkontrollen er laget for et betrodd lokalnettverk, ikke for eksponering mot internett.
-
-## Betjening
-
-På hovedsiden velger du effekt med ett trykk. Den aktive knappen markeres tydelig. Når **VU Meter** eller **Comet** allerede er valgt, blar et nytt trykk til neste fargevariant.
-
-Trykk på **tannhjulet nederst til høyre** for innstillinger, inkludert lysstyrke og Wi-Fi.
-
-## Prosjektstatus
-
-Prosjektet er utviklet iterativt. Kometfunksjonen er nylig justert til å starte **en ny komet for hvert BPM-slag**, med **30 LED-er lang hale** og mulighet for flere kometer samtidig. Ytterligere finjustering av BPM-følsomhet og hastighet kan være aktuelt.
+Innstillingssiden åpnes med tannhjulet. Den har blant annet lysstyrke, dynamikk/lydfølsomhet, LED-antall, GPIO og informasjon om prosjektet. Noen maskinvareinnstillinger krever omstart.
 
 ## Teknologi
 
-**ESP32-S3 · Arduino · PlatformIO · M5Unified · Adafruit NeoPixel · arduinoFFT · Wi-Fi · WebServer · mDNS**
+ESP32-S3 · Arduino · PlatformIO · M5Unified · Adafruit NeoPixel · arduinoFFT · Wi-Fi · WebServer · mDNS
 
 ---
 
-Laget som et hobbyprosjekt for å utforske musikkstyrt LED-belysning.
+Laget som et hobbyprosjekt for musikkstyrt LED-belysning.
