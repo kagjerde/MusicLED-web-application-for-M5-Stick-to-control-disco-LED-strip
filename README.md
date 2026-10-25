@@ -6,9 +6,15 @@ MusicLED bruker mikrofonen i M5StickS3 til å styre en adresserbar LED-stripe. E
 
 **Stabil versjon: v2.0 – Random Play** (testet og godkjent på M5StickS3).
 
-![MusicLED-kontroll (eldre illustrasjon)](drum-pads.png)
+## Skjermbilder fra v2.0
 
-> Illustrasjonsbildene i dette repositoriet kan vise et eldre grensesnitt.
+**Hovedskjerm:** Seks effekter, BPM-status og Random Play.
+
+![MusicLED v2.0 – hovedskjerm](docs/images/musicled-v2-main.png)
+
+**Innstillinger:** Dynamikk, lysstyrke, BPM-kontroll, LED-antall, GPIO og nettverk.
+
+![MusicLED v2.0 – innstillinger](docs/images/musicled-v2-settings.png)
 
 ## Effekter
 
@@ -30,7 +36,16 @@ MusicLED bruker mikrofonen i M5StickS3 til å styre en adresserbar LED-stripe. E
 - **Bouncing Balls:** Lysballer skytes opp fra LED 0 og spretter med gravitasjon og varierende høyde.
 - **Fireworks:** Hvit rakett skytes opp fra LED 0 og eksploderer i fargede fragmenter, med varierende høyde og spredning.
 
-**Betjening:** Trykk på en hovedknapp for å velge effekt. Enkelttrykk på aktiv knapp bytter farge eller effektens spesialvalg; dobbelttrykk på Wave, VU Meter og Particles bytter variant.
+### Betjening
+
+| Handling | Resultat |
+|---|---|
+| Trykk på en av de seks effektknappene | Velger effekt og avslutter eventuell Random Play |
+| Enkelttrykk på aktiv effektknapp | Bytter farge eller tilgjengelig spesialvalg |
+| Dobbelttrykk på Wave, VU Meter eller Particles | Bytter undervariant |
+| Trykk på **RANDOM** | Starter tilfeldig effektvalg |
+| Trykk på **RANDOM** igjen | Velger en ny tilfeldig kombinasjon med en gang |
+| Trykk på tannhjulet | Åpner innstillinger |
 
 ## Random Play (v2.0)
 
@@ -74,7 +89,7 @@ M5StickS3 GND    ─────┬───── GND på WS2812
 
 ## Innstillinger
 
-Innstillingssiden åpnes med tannhjulet. Den har blant annet lysstyrke, dynamikk/lydfølsomhet, LED-antall, GPIO og informasjon om prosjektet. Noen maskinvareinnstillinger krever omstart.
+Innstillingssiden åpnes med tannhjulet. Her kan du justere **dynamikk/lydfølsomhet**, **lysstyrke**, **BPM AUTO/MANUAL** (med TAP BEAT), **LED-antall (1–300)** og **ESP32 GPIO-datapin**. Nederst finner du nettverksoppsett og lenke til kildekoden. Endring av LED-oppsett lagres og krever omstart.
 
 ## Teknologi
 
