@@ -10,20 +10,27 @@
 #include <DNSServer.h>
 #include <ESPmDNS.h>
 
+// MusicLED 180x180 home-screen icon (restored from v1.6).
+static const uint8_t MUSICLED_ICON_PNG[] = {0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a,0x00,0x00,0x00,0x0d,0x49,0x48,0x44,0x52,0x00,0x00,0x00,0xb4,0x00,0x00,0x00,0xb4,0x08,0x02,0x00,0x00,0x00,0xb2,0xaf,0x91,0x65,0x00,0x00,0x04,0x69,0x49,0x44,0x41,0x54,0x78,0xda,0xed,0xdd,0x21,0x6f,0x14,0x41,0x18,0x80,0xe1,0xeb,0xa6,0xae,0xa6,0x09,0xa6,0xb2,0x09,0x0e,0x0b,0x39,0x42,0x25,0x12,0x83,0xad,0xeb,0x1f,0x40,0x35,0x4d,0x70,0x88,0xba,0x26,0xa4,0x8a,0x3f,0x50,0x57,0x5b,0x53,0x59,0x59,0x02,0xa1,0x16,0x57,0x8f,0x41,0xe2,0x11,0x24,0xcd,0xd1,0xce,0xed,0xed,0xde,0xce,0xce,0xed,0xcc,0x3c,0xaf,0xe2,0x2e,0x0d,0xbd,0xdc,0x3e,0xf9,0x66,0x76,0x0f,0xf6,0xb6,0x76,0x76,0xf7,0x67,0x52,0xa8,0xc6,0x5b,0x20,0x38,0x04,0x87,0xe0,0x10,0x1c,0x82,0x43,0x70,0x08,0x0e,0xc1,0xa1,0xd2,0xdb,0xde,0xe0,0xef,0x3e,0x38,0x3c,0x71,0x00,0xba,0x74,0x7b,0xf9,0x79,0x23,0xbf,0x77,0x2b,0xe5,0xe5,0x73,0x1a,0xf2,0xb2,0x92,0x02,0x07,0x13,0x99,0x2a,0x19,0x17,0x47,0x3b,0x8b,0xbb,0xeb,0x0b,0x07,0xb8,0x4b,0x2f,0xdf,0x1d,0x6d,0x84,0xc8,0x58,0x38,0x96,0xb1,0x00,0x62,0x24,0x28,0x63,0x10,0x89,0x8f,0x23,0xc8,0x82,0x89,0x34,0x4a,0xe2,0x12,0x89,0x8c,0xe3,0x91,0x0c,0x26,0xd2,0x2b,0x89,0xe8,0xa3,0x21,0x23,0xf7,0x1e,0xbd,0xcf,0x11,0xb7,0xff,0x71,0x26,0x07,0x16,0x45,0x8e,0x90,0x86,0x0c,0x23,0x64,0xac,0xc9,0xb1,0xf8,0x0a,0xb0,0x98,0xe0,0x08,0x19,0x32,0x3f,0x1a,0x32,0xca,0x1e,0x21,0x43,0xe6,0x47,0x43,0x06,0x1f,0x91,0x71,0x90,0x51,0x83,0x8f,0x26,0xe2,0x2b,0xd0,0xc4,0xb7,0xa8,0x29,0x70,0x3c,0x30,0x24,0x23,0x23,0x1f,0x6b,0x0c,0x8f,0x66,0x6d,0x19,0xca,0xae,0xbe,0xc7,0xae,0x59,0xfb,0x6f,0x37,0x36,0x8a,0xdf,0x7c,0x34,0xc3,0x7f,0x9f,0x4a,0xdd,0x7c,0xf4,0xc0,0x61,0x41,0xa9,0x6d,0x71,0x69,0x92,0x31,0x54,0x76,0xc3,0xa3,0xe9,0xcb,0x8d,0x8c,0x7a,0xce,0x5c,0xfc,0xd7,0x04,0x0d,0xc3,0x61,0xb7,0x51,0xe7,0xce,0xa3,0xdf,0xe4,0xb0,0xa6,0x54,0xb5,0xf3,0xb0,0xac,0x68,0x00,0x0e,0x6b,0x4a,0xb5,0x2b,0x4b,0x8f,0xc9,0x61,0x4d,0xa9,0x6d,0x65,0xd9,0xae,0xe4,0x1d,0xf9,0xf4,0xf6,0xfb,0xe2,0xc3,0xd3,0x9b,0x39,0x25,0xf6,0x1c,0x01,0x19,0xc1,0x67,0x54,0x23,0x8e,0x65,0x0e,0xf8,0x18,0x8a,0x23,0xf7,0x0b,0xa3,0xed,0x02,0xaa,0xf5,0xd1,0xf1,0x52,0x69,0xc9,0x93,0xa3,0xcb,0xb1,0x37,0x3f,0x6a,0xdf,0x73,0x08,0x0e,0xc1,0x21,0x38,0x04,0x87,0xe0,0x10,0x1c,0x2a,0xa9,0x6d,0x6f,0xc1,0xca,0x7e,0xbd,0xf9,0xb8,0xf8,0x70,0xef,0xeb,0x99,0xc9,0xa1,0x80,0x8c,0xe0,0x33,0x70,0x90,0x51,0x9d,0x0f,0x38,0x7a,0xcb,0xa8,0xc7,0x07,0x1c,0xeb,0x1f,0xfb,0xe2,0x7d,0xc0,0xa1,0x22,0xce,0x56,0x5e,0x1c,0xff,0xf7,0x09,0xea,0xcf,0x73,0xff,0x9a,0xcb,0xe4,0x08,0xc9,0x08,0x3e,0xa3,0x1a,0x71,0x2c,0x73,0xc0,0x47,0xed,0x38,0xda,0x05,0xf0,0x51,0x2f,0x8e,0x2e,0xc7,0x9e,0x0f,0x67,0x2b,0x82,0x43,0x70,0x68,0xfa,0xf9,0x54,0x76,0xdc,0x7e,0x7f,0xd9,0x59,0x7c,0xf8,0xec,0xc3,0x1f,0x93,0x43,0x01,0x19,0xc1,0x67,0xe0,0x20,0x23,0x4b,0x1f,0x70,0x24,0x95,0x91,0x97,0x0f,0x38,0x52,0xcb,0xc8,0xc8,0x07,0x1c,0x82,0x43,0xd3,0x3f,0x95,0x7d,0x7e,0xf5,0xdf,0xa5,0xee,0xfb,0xf7,0x3e,0x76,0x37,0x39,0x42,0x32,0x82,0xcf,0xa8,0xc6,0xc9,0xb1,0xcc,0xc1,0xf3,0xab,0xef,0xe6,0x47,0xb0,0x57,0xdf,0x8e,0x17,0x1f,0xfe,0x78,0x7d,0x5e,0xe6,0xe4,0x68,0x9f,0x10,0xe6,0xc7,0x4a,0x19,0xc1,0x67,0x4a,0xc0,0xd1,0xe5,0xd8,0xf3,0xd1,0xc5,0x41,0x62,0x1f,0xce,0x56,0xb2,0x91,0x91,0xde,0x07,0x1c,0x39,0xc9,0x48,0xec,0x03,0x0e,0xc1,0x21,0x38,0x04,0x87,0xe0,0x10,0x1c,0x82,0x43,0x70,0x08,0x0e,0xc1,0x21,0x38,0x24,0x38,0x04,0x87,0xe0,0x10,0x1c,0x82,0x43,0x70,0x08,0x0e,0xc1,0x21,0x38,0x04,0x87,0x04,0x87,0xe0,0x10,0x1c,0x82,0x43,0x70,0x08,0x0e,0x3d,0xad,0xcb,0x7d,0x16,0x92,0xdd,0x8b,0x01,0x8e,0xcc,0x7c,0xa4,0xbc,0x4b,0x47,0x0a,0x1c,0x5d,0xee,0xcd,0xe2,0xfe,0x2d,0x5d,0x04,0x24,0xbe,0x7f,0x4b,0xa2,0xc9,0xd1,0x7e,0xec,0xc9,0xe8,0xe2,0x20,0xfd,0x9d,0x7d,0xd2,0xdd,0xf6,0xe9,0xfe,0xfd,0x3c,0x78,0x87,0x16,0x32,0xa6,0xb0,0x82,0x6c,0x7e,0xcf,0xf1,0xd4,0x01,0x19,0x53,0x2e,0xf5,0xad,0x26,0x69,0x70,0x2a,0x2b,0x38,0x04,0x87,0x7a,0xd5,0xe5,0x1b,0x77,0xb2,0xf8,0x56,0x1e,0x38,0x36,0xe0,0x23,0x97,0xef,0x6b,0x82,0x23,0xb5,0x8f,0x8c,0xbe,0xc9,0x0b,0x8e,0xa4,0x3e,0xf2,0xfa,0x8e,0x37,0x5f,0x00,0xb8,0xf9,0xfd,0x87,0xc9,0x21,0x38,0x04,0x87,0xe0,0xd8,0x7c,0x3f,0xcf,0xe7,0x51,0x7e,0x46,0x65,0x4e,0x8e,0xf6,0x63,0x4f,0x46,0xed,0xcb,0xca,0x32,0x01,0x64,0xc0,0x11,0x76,0x40,0xc6,0xd8,0xe5,0x74,0x9d,0x83,0x06,0x93,0x43,0x70,0x4c,0xbb,0xbd,0xaf,0x67,0x51,0x7e,0x06,0x8e,0x1a,0x7d,0x14,0x2f,0x03,0x8e,0x35,0x7d,0xd4,0x20,0x03,0x8e,0x75,0x7c,0x54,0x22,0x63,0xe6,0x53,0xd9,0x58,0xfb,0x0f,0x93,0x43,0x70,0x48,0x70,0x08,0x0e,0xc1,0x21,0x38,0x04,0x87,0xe0,0x18,0xb3,0xd3,0x9b,0x79,0x94,0x9f,0x81,0x23,0xdc,0xed,0xe5,0xe7,0x7f,0x7f,0x78,0xf9,0xee,0xa8,0x3c,0x1f,0xd5,0xca,0x78,0x38,0x9a,0x0f,0xc7,0xb7,0xd2,0x65,0x65,0x99,0x00,0x33,0xc3,0x9e,0x23,0xec,0x80,0x8c,0x2e,0xd5,0xf2,0xd9,0x0a,0x0d,0xe3,0x4e,0x8e,0x4c,0xb7,0x1d,0x5a,0xfb,0x38,0xae,0xc6,0xd1,0xbe,0x67,0x51,0xbe,0xad,0x3c,0xb2,0xae,0x73,0x28,0x12,0x0e,0x2b,0x4b,0x3d,0x6b,0x4a,0x57,0x1c,0x56,0x96,0x0a,0xd7,0x14,0xcb,0x8a,0x62,0xe0,0xc8,0xfd,0x52,0xa9,0x66,0x9d,0x2f,0x8c,0x0e,0x9a,0x1c,0x7c,0x14,0xbf,0xdb,0xe8,0x8d,0xc3,0xce,0xa3,0x9e,0xdd,0xc6,0xa0,0x3d,0x87,0xe1,0x51,0xfc,0xd8,0xe8,0x8d,0x63,0x11,0x1d,0x1f,0x39,0xca,0xe8,0x35,0xfe,0x7b,0x4f,0x0e,0x8b,0x4b,0x0d,0x0b,0xca,0xfa,0xcb,0x8a,0x33,0x97,0x82,0xcf,0x50,0x22,0xec,0x39,0x2c,0x2e,0x05,0x6f,0x35,0x86,0xe2,0xb0,0xf9,0x28,0x78,0xab,0x11,0x61,0x72,0xf0,0x51,0xb6,0x8c,0xa1,0xcb,0x0a,0x1f,0x05,0xcb,0x98,0xcd,0x66,0x5b,0x3b,0xbb,0xfb,0x03,0x5f,0xca,0xc1,0xe1,0xc9,0xe2,0xc3,0xbb,0xeb,0x0b,0x87,0x67,0x22,0x9b,0x8c,0x81,0xa7,0x96,0x11,0x3e,0x78,0x7b,0xf4,0x0a,0x8c,0x90,0x32,0x64,0xc4,0x99,0x1c,0x46,0x48,0x79,0x2c,0xa2,0x4d,0x0e,0x23,0xa4,0x48,0x19,0x91,0x27,0x47,0x70,0x7e,0x98,0x22,0x69,0x4c,0x44,0x97,0x31,0x0a,0x8e,0x16,0x22,0x94,0x8c,0x64,0x62,0x36,0xce,0xc7,0x1a,0x63,0xe1,0x68,0x27,0x02,0x4a,0x14,0x10,0xe3,0xb1,0x48,0x81,0xa3,0x0b,0x11,0xc5,0xda,0xe4,0x65,0x89,0x83,0x92,0xbc,0x4c,0x6c,0x06,0x07,0x2b,0x13,0xd7,0x30,0x21,0x1c,0x9a,0x78,0xfe,0x6b,0x82,0xe0,0x10,0x1c,0x82,0x43,0x70,0x08,0x0e,0xc1,0x21,0x38,0x54,0x4a,0x7f,0x01,0x38,0x93,0xa9,0x85,0xd4,0xfb,0xb9,0x0b,0x00,0x00,0x00,0x00,0x49,0x45,0x4e,0x44,0xae,0x42,0x60,0x82};
+
 // =====================================================
 // HARDWARE
 // =====================================================
 
-#define LED_PIN 1
-#define NUM_LEDS 68
+// Runtime-configurable LED strip. MAX_LEDS reserves storage for effects.
+static const uint16_t MAX_LEDS = 300;
+static const uint16_t DEFAULT_NUM_LEDS = 68;
+static const uint8_t DEFAULT_LED_PIN = 1;
+uint16_t NUM_LEDS = DEFAULT_NUM_LEDS;
+uint8_t ledPin = DEFAULT_LED_PIN;
 #define BRIGHTNESS 60
 
 #define SAMPLE_RATE 16000
 #define SAMPLES 512
 
 Adafruit_NeoPixel strip(
-    NUM_LEDS,
-    LED_PIN,
+    MAX_LEDS,
+    DEFAULT_LED_PIN,
     NEO_GRB + NEO_KHZ800
 );
 
@@ -56,12 +63,37 @@ enum LedMode {
 volatile LedMode mode = RAINBOW_MUSIC;
 volatile int requestedMode = -1;
 volatile bool requestedColor = false;
+volatile bool requestedWaveColor = false;
+volatile bool requestedWaveVariant = false;
+volatile bool requestedVUVariant = false;
+volatile uint8_t waveVariant = 0; // 0 standard, 1 top, 2 bottom, 3 ping pong
+volatile uint8_t waveColor = 5; // 0 classic, 1 blue, 2 red, 3 purple, 4 gold, 5 rainbow
+volatile bool vuCentered = false;
 volatile bool requestedCometColor = false;
+volatile bool requestedBPMColor = false;
+volatile uint8_t dynamicsPercent = 50;  // 50% = original response
+volatile bool manualBPM = false;
+volatile float manualBPMValue = 120.0f;
+volatile uint8_t bpmColorVariant = 0;  // 0 white, 1 red/blue, 2 rainbow
+uint32_t tapTimes[6] = {};
+uint8_t tapCount = 0;
+uint32_t lastTapTime = 0;
+const uint32_t MUSIC_SILENCE_MS = 1000;
+// Track the quiet microphone floor separately from musical activity.
+float musicNoiseFloor = 0.0f;
+bool musicGateInitialized = false;
+// Energy pad cycles 2 -> 3 -> 4 -> 1 -> 2, remembered across mode changes.
+volatile uint8_t energyFlashVariant = 2;
+volatile bool requestedEnergyCycle = false;
+uint32_t lastMusicActivity = 0;
+bool audioIsActive = false;
+float dynamicsFactor() { return constrain(1.0f + ((int)dynamicsPercent - 50) / 100.0f, 0.5f, 1.5f); }
+
 volatile uint8_t requestedBrightness = BRIGHTNESS;
 uint8_t currentBrightness = BRIGHTNESS;
 
 const char* modeNames[] = {
-    "RAINBOW MUSIC",
+    "WAVE",
     "VU METER",
     "COMET BEAT",
     "BPM AUTO",
@@ -293,31 +325,182 @@ uint32_t nextBPMFlash = 0;
 
 uint32_t bpmFlashCount = 0;
 
-// Comet Beat: multiple overlapping comets, each with a 30-LED fading tail.
-// A new comet is launched for every detected/predicted BPM beat.
-// Travel speed follows tempo: one beat advances the head halfway up the strip.
-static const int COMET_TAIL_LEDS = 30;
+// Comet Beat: multiple independent comets, fixed travel speed at 120 BPM.
+// Tail shortens with BPM: 60=>28, 90=>24, 120=>20, 150=>16, 180=>12.
+static const int COMET_MAX_TAIL = 32;
 static const int COMET_MAX_ACTIVE = 8;
 uint32_t cometStarts[COMET_MAX_ACTIVE] = {0};
+uint8_t cometTails[COMET_MAX_ACTIVE] = {0};
 uint8_t cometWriteIndex = 0;
 uint32_t cometLastBeat = 0;
 
 void resetComets() {
-    for (int n = 0; n < COMET_MAX_ACTIVE; n++) cometStarts[n] = 0;
+    for (int n = 0; n < COMET_MAX_ACTIVE; n++) { cometStarts[n] = 0; cometTails[n] = 0; }
     cometWriteIndex = 0;
     cometLastBeat = bpmFlashCount;
 }
 
+
+// MusicLED 2.0: random-play release; particle diffusion, gravity heights and fireworks variation tuned.
+volatile uint8_t particleVariant=0; // 0 explosion, 1 diffusion, 2 breathe, 3 streamer, 4 balls, 5 fireworks
+volatile uint8_t particleColor=5; // classic, blue, red, purple, gold, rainbow
+volatile bool requestedParticleVariant=false;
+volatile bool requestedParticleColor=false;
+struct Particle {float pos, vel, life; uint32_t start; uint8_t type; uint16_t hue; bool active;};
+static Particle particles[24];
+static uint32_t particleBeat=0, particleLastFrame=0;
+static float particleGlow=0;
+static uint8_t particleNext=0;
+static uint32_t particleLastLaunch=0;
+static uint8_t particleBurst=0;
+static float particleRocket=0, particleRocketVel=0;
+static bool rocketActive=false;
+static uint16_t particleRocketHue=0;
+
+void resetParticles(){
+  for(auto &p:particles)p.active=false;
+  particleBeat=bpmFlashCount;particleLastFrame=millis();particleGlow=0;
+  particleLastLaunch=0;rocketActive=false;particleBurst=0;
+}
+uint32_t particleRGB(uint16_t hue, uint8_t strength){
+  uint8_t r=0,g=0,b=0;
+  switch(particleColor){
+    case 0:r=strength;g=(uint8_t)(strength*.85f);b=(uint8_t)(strength*.45f);break;
+    case 1:b=strength;g=(uint8_t)(strength*.35f);break;
+    case 2:r=strength;break;
+    case 3:r=(uint8_t)(strength*.7f);b=strength;break;
+    case 4:r=strength;g=(uint8_t)(strength*.65f);break;
+    default:return strip.gamma32(strip.ColorHSV(hue,255,strength));
+  }
+  return strip.Color(r,g,b);
+}
+void particleAdd(int i,uint32_t color){
+ if(i<0||i>=NUM_LEDS)return;
+ uint32_t old=strip.getPixelColor(i);
+ uint8_t r=min(255,(int)((old>>16)&255)+(int)((color>>16)&255));
+ uint8_t g=min(255,(int)((old>>8)&255)+(int)((color>>8)&255));
+ uint8_t b=min(255,(int)(old&255)+(int)(color&255));
+ strip.setPixelColor(i,strip.Color(r,g,b));
+}
+void particleSpawn(float pos,float vel,float life,uint8_t type,uint16_t hue){
+ Particle &p=particles[particleNext++%24];
+ p={pos,vel,life,millis(),type,hue,true};
+}
+void updateParticles(){
+ uint32_t now=millis();float dt=min(0.06f,(now-particleLastFrame)*.001f);particleLastFrame=now;
+ strip.clear();
+ uint32_t beats=bpmFlashCount-particleBeat;particleBeat=bpmFlashCount;
+ if(beats>3)beats=3;
+ bool beat=beats>0 && audioIsActive;
+ if(beat){
+   particleGlow=1.0f;
+   if(particleVariant==0||particleVariant==1){
+     for(uint32_t k=0;k<beats;k++)particleSpawn((NUM_LEDS-1)*.5f,0,1.0f,particleVariant,(uint16_t)random(65536));
+   }else if(particleVariant==2){ /* Breathe uses a smoothed envelope below. */ }
+   else if(particleVariant==3){
+     for(int k=0;k<3;k++)particleSpawn(random(NUM_LEDS),((random(2)?1:-1)*(8+random(24))),1.0f,3,(uint16_t)random(65536));
+   }else if(particleVariant==4){
+     // Bottom is always LED 0; initial upward speed follows beat strength.
+     // Select a fresh apex between 30% and 100% of the available strip.
+     // v=sqrt(2*g*h) ensures that every height is physically reachable.
+     const float heightFraction=random(30,101)*.01f;
+     const float targetHeight=(NUM_LEDS-1)*heightFraction;
+     const float v=sqrtf(2.0f*55.0f*targetHeight);
+     particleSpawn(0,v,1.0f,4,(uint16_t)random(65536));
+   }else if(particleVariant==5 && !rocketActive){
+     rocketActive=true;particleRocket=0;
+     // Random explosion height: 40%-95% of the strip, not a fixed apex.
+     const float targetHeight=(NUM_LEDS-1)*(random(40,96)*.01f);
+     particleRocketVel=sqrtf(2.0f*55.0f*targetHeight);
+     particleRocketHue=(uint16_t)random(65536);
+   }
+ }
+ particleGlow*=powf(.18f,dt);
+ if(particleVariant==2){
+   // Audio amplitude supplies a slow base glow; beats add a visible breath.
+   float base=audioIsActive?.16f:0.02f;
+   uint8_t v=(uint8_t)(255.0f*min(1.0f,base+particleGlow*.84f));
+   for(int i=0;i<NUM_LEDS;i++)strip.setPixelColor(i,particleRGB((uint16_t)(i*65535UL/max(1,(int)NUM_LEDS)),v));
+ }
+ if(particleVariant==3 && audioIsActive && now-particleLastLaunch>200){
+   particleLastLaunch=now;
+   particleSpawn(random(NUM_LEDS),((random(2)?1:-1)*(5+random(14))),1.0f,3,(uint16_t)random(65536));
+ }
+ if(particleVariant==5 && rocketActive){
+   particleRocket+=particleRocketVel*dt;particleRocketVel-=55.0f*dt;
+   int head=(int)roundf(particleRocket);
+   particleAdd(head,strip.Color(255,255,255));
+   particleAdd(head-1,strip.Color(80,80,80));
+   if(particleRocketVel<=0 || particleRocket>=NUM_LEDS-2){
+     rocketActive=false;
+     // The explosion happens after launch, not necessarily on the next beat.
+     const int fragments=random(8,17);
+      const float spread=0.65f+random(75)*.01f;
+      for(int k=0;k<fragments;k++){
+        const float velocity=(random(2)?1.0f:-1.0f)*(8.0f+random(16,49)*spread);
+        particleSpawn(particleRocket,velocity,0.85f+random(50)*.01f,5,
+                      (uint16_t)(particleRocketHue+random(65536)));
+      }
+   }
+ }
+ for(auto &p:particles){
+   if(!p.active)continue;
+   float age=(now-p.start)*.001f;
+   if(p.type==0||p.type==1){
+     float speed=p.type==0?46.0f:27.0f;
+     float radius=age*speed;
+     float fade=max(0.0f,1.0f-age/(p.type==0?1.25f:2.9f));
+     if(fade<=0){p.active=false;continue;}
+     if(p.type==0){
+       for(int side=-1;side<=1;side+=2)for(int w=-2;w<=2;w++){
+         int idx=(int)roundf(p.pos+side*radius+w);
+         float edge=1.0f-abs(w)*.27f;
+         particleAdd(idx,particleRGB(p.hue,(uint8_t)(235*fade*edge)));
+       }
+     }else{
+       // Diffusion is a growing, soft cloud rather than a sharp traveling ring.
+       for(int i=0;i<NUM_LEDS;i++){
+         float d=fabsf(i-p.pos);
+         float width=5.0f+radius;
+         if(d<width){ const float envelope=0.30f+0.70f*sqrtf(max(0.0f,1.0f-d/width)); const float intensity=min(255.0f,245.0f*fade*envelope); particleAdd(i,particleRGB(p.hue,(uint8_t)intensity)); }
+       }
+     }
+   }else if(p.type==3){
+     p.pos+=p.vel*dt;
+     if(p.pos<0||p.pos>=NUM_LEDS){p.active=false;continue;}
+     p.life-=dt*.7f;
+     if(p.life<=0){p.active=false;continue;}
+     for(int k=0;k<5;k++)particleAdd((int)(p.pos-k*(p.vel>0?1:-1)),particleRGB(p.hue,(uint8_t)(190*p.life/(1+k))));
+   }else if(p.type==4||p.type==5){
+     // Gravity, in LED units per second squared. Balls bounce with energy loss.
+     p.pos+=p.vel*dt;p.vel-=55.0f*dt;
+     if(p.pos>=NUM_LEDS-1){p.pos=NUM_LEDS-1;p.vel=-fabsf(p.vel)*.7f;}
+     if(p.pos<=0){
+       p.pos=0;
+       if(p.type==4&&fabsf(p.vel)>9)p.vel=-p.vel*.63f;
+       else {p.active=false;continue;}
+     }
+     if(p.type==5){p.life-=dt*.65f;if(p.life<=0){p.active=false;continue;}}
+     uint8_t v=(uint8_t)(235*(p.type==4?1.0f:p.life));
+     particleAdd((int)roundf(p.pos),particleRGB(p.hue,v));
+     if(p.type==5)particleAdd((int)roundf(p.pos-p.vel*.03f),particleRGB(p.hue,v/3));
+   }
+ }
+}
 void updateComet() {
     const uint32_t now = millis();
 
     // BPM counter is incremented by the audio/clock loop.
     // Each increment creates a separate comet; no restart of older comets.
-    if (cometLastBeat != bpmFlashCount) {
+    if (audioIsActive && cometLastBeat != bpmFlashCount) {
         uint32_t beats = bpmFlashCount - cometLastBeat;
         cometLastBeat = bpmFlashCount;
         if (beats > COMET_MAX_ACTIVE) beats = COMET_MAX_ACTIVE;
+        float tempo = manualBPM ? manualBPMValue : (estimatedBPM > 0 ? estimatedBPM : 120.0f);
+        // Pronounced tail difference: 100 BPM ~27 LEDs, 140 BPM ~13 LEDs.
+        uint8_t tail = (uint8_t)constrain((int)roundf(62.0f - 0.35f * tempo), 9, 32);
         for (uint32_t n = 0; n < beats; n++) {
+            cometTails[cometWriteIndex] = tail;
             cometStarts[cometWriteIndex] = now ? now : 1;
             cometWriteIndex = (cometWriteIndex + 1) % COMET_MAX_ACTIVE;
         }
@@ -326,27 +509,25 @@ void updateComet() {
     // At 120 BPM, one beat is 500 ms; the head advances 34 LEDs
     // during that time, so the previous comet is about halfway
     // when the next launches. Use 500 ms until tempo is established.
-    float interval = beatIntervalMs > 0.0f ? beatIntervalMs : 500.0f;
-    interval = constrain(interval, 280.0f, 1200.0f);
-    const float ledsPerMs = (NUM_LEDS * 0.5f) / interval;
-
-    uint8_t red[NUM_LEDS] = {0};
-    uint8_t green[NUM_LEDS] = {0};
-    uint8_t blue[NUM_LEDS] = {0};
+    const float ledsPerMs = (NUM_LEDS * 0.5f) / 500.0f; // fixed at 120 BPM speed
+    uint8_t red[MAX_LEDS] = {0};
+    uint8_t green[MAX_LEDS] = {0};
+    uint8_t blue[MAX_LEDS] = {0};
 
     for (int n = 0; n < COMET_MAX_ACTIVE; n++) {
         if (!cometStarts[n]) continue;
+        int tailLength = cometTails[n] ? cometTails[n] : 18;
         float head = (now - cometStarts[n]) * ledsPerMs;
-        if (head >= NUM_LEDS + COMET_TAIL_LEDS) {
+        if (head >= NUM_LEDS + COMET_MAX_TAIL) {
             cometStarts[n] = 0;
             continue;
         }
         for (int i = 0; i < NUM_LEDS; i++) {
             float distance = head - i;
-            if (distance < 0 || distance >= COMET_TAIL_LEDS) continue;
+            if (distance < 0 || distance >= tailLength) continue;
 
             // Bright head, smooth fading tail, no sudden LED jumps.
-            float intensity = 1.0f - distance / COMET_TAIL_LEDS;
+            float intensity = 1.0f - distance / tailLength;
             intensity *= intensity;
             uint8_t v = (uint8_t)(255.0f * intensity);
             uint8_t r=0, g=0, b=0;
@@ -392,8 +573,8 @@ portMUX_TYPE ledMux = portMUX_INITIALIZER_UNLOCKED;
 volatile FlashCommand flashCommand = FLASH_NONE;
 volatile uint32_t flashCommandTime = 0;
 
-volatile uint32_t flashStart[2] = {0, 0};
-volatile uint32_t flashEnd[2] = {0, 0};
+volatile uint32_t flashStart[4] = {0, 0, 0, 0};
+volatile uint32_t flashEnd[4] = {0, 0, 0, 0};
 
 volatile uint8_t flashCount = 0;
 
@@ -591,7 +772,7 @@ uint32_t vuColorAt(int ledIndex) {
             uint16_t hue = (uint16_t)(
                 (uint32_t)ledIndex *
                 65535 /
-                (NUM_LEDS - 1)
+                max(1, (int)NUM_LEDS - 1)
             );
 
             return strip.gamma32(
@@ -616,7 +797,6 @@ uint32_t vuColorAt(int ledIndex) {
                     255, 200, 0
                 );
             }
-
             return strip.Color(
                 255, 0, 0
             );
@@ -822,6 +1002,7 @@ float medianBPMInterval() {
 // =====================================================
 
 void acceptBPMOnset(uint32_t onsetTime) {
+    if (!audioIsActive) return;
     bpmDetectedBeats++;
 
     if (lastBPMOnset != 0) {
@@ -880,8 +1061,10 @@ void acceptBPMOnset(uint32_t onsetTime) {
     lastBPMEvidence = onsetTime;
 
     if (!bpmLocked) {
-        if (mode == COMET_BEAT) bpmFlashCount++;
-        requestFlash(FLASH_SINGLE);
+        if (audioIsActive) {
+            if (mode == COMET_BEAT || (mode == RAINBOW_MUSIC && waveVariant != 0)) bpmFlashCount++;
+            requestFlash(FLASH_SINGLE);
+        }
         return;
     }
 
@@ -963,6 +1146,7 @@ void updateBPMDetector(
         BPM_REFRACTORY_MS;
 
     if (
+        audioIsActive &&
         localPeak &&
         strongEnough &&
         cooldownFinished
@@ -989,21 +1173,16 @@ void updateBPMDetector(
 // =====================================================
 
 void updateBPMClock() {
-    if (
-        (mode != BPM_AUTO && mode != COMET_BEAT) ||
-        !bpmLocked ||
-        beatIntervalMs <= 0.0f
-    ) {
+    if (mode != BPM_AUTO && mode != COMET_BEAT && !(mode == RAINBOW_MUSIC && waveVariant != 0)) return;
+    uint32_t now = millis();
+    // Silence gates beat output even when using manual tempo.
+    if (!audioIsActive) {
+        nextBPMFlash = 0; // do not accumulate missed beats
         return;
     }
-
-    uint32_t now = millis();
-
-    if (now - lastBPMEvidence > BPM_HOLD_MS) {
-        // Behold BPM og fortsett med intern klokke.
-        // Ikke nullstill rytmen.
-        bpmConfidence = 4;
-    }   
+    float interval = manualBPM ? 60000.0f / manualBPMValue : beatIntervalMs;
+    if ((!manualBPM && !bpmLocked) || interval <= 0.0f) return;
+    if (nextBPMFlash == 0) nextBPMFlash = now + (uint32_t)interval;   
 
     if (
         nextBPMFlash != 0 &&
@@ -1017,7 +1196,7 @@ void updateBPMClock() {
         bpmFlashCount++;
 
         nextBPMFlash +=
-            (uint32_t)beatIntervalMs;
+            (uint32_t)interval;
 
         // Skip overdue ticks, never
         // generate catch-up flashes.
@@ -1030,7 +1209,7 @@ void updateBPMClock() {
             nextBPMFlash =
                 now +
                 (uint32_t)
-                beatIntervalMs;
+                interval;
         }
     }
 }
@@ -1045,6 +1224,7 @@ void updateEnergyStrobe(
 ) {
     uint32_t now = millis();
 
+    energy *= dynamicsFactor();
     energyStrobeValue = energy;
 
     if (!energyInitialized) {
@@ -1144,7 +1324,7 @@ void analyzeAudio() {
     );
 
     if (
-        mode == RAINBOW_MUSIC ||
+        (mode == RAINBOW_MUSIC && waveVariant == 0) ||
         mode == VU_METER
     ) {
         updateAGC(rms, dt);
@@ -1241,7 +1421,7 @@ void analyzeAudio() {
         }
 
         if (
-            (mode == BPM_AUTO || mode == COMET_BEAT) &&
+            (mode == BPM_AUTO || mode == COMET_BEAT || (mode == RAINBOW_MUSIC && waveVariant != 0)) &&
             freq >= BPM_BASS_MIN_HZ &&
             freq < BPM_BASS_MAX_HZ
         ) {
@@ -1330,7 +1510,7 @@ void analyzeAudio() {
     // BPM AUTO:
     // dedicated bass detector
     if (
-        (mode == BPM_AUTO || mode == COMET_BEAT) &&
+        (mode == BPM_AUTO || mode == COMET_BEAT || (mode == RAINBOW_MUSIC && waveVariant != 0)) &&
         bassBins > 0
     ) {
         float bassMagnitude =
@@ -1346,10 +1526,11 @@ void analyzeAudio() {
                 1.0f
             );
 
-        updateBPMDetector(
-            bassNormalized,
-            dt
-        );
+        if (!manualBPM) {
+            updateBPMDetector(
+                constrain(bassNormalized * dynamicsFactor(), 0.0f, 1.0f), dt
+            );
+        }
     }
 }
 
@@ -1396,16 +1577,71 @@ void updateRainbow() {
             (color & 255) *
             brightness / 255;
 
-        strip.setPixelColor(
-            i,
-            strip.Color(r, g, b)
-        );
+        if (waveColor != 5) {
+            uint32_t base = waveColor == 0 ? (i < NUM_LEDS*0.5f ? strip.Color(0,255,0) : i < NUM_LEDS*0.7f ? strip.Color(255,200,0) : strip.Color(255,0,0)) :
+                waveColor == 1 ? strip.Color(0,100,255) :
+                waveColor == 2 ? strip.Color(255,0,0) :
+                waveColor == 3 ? strip.Color(160,0,255) : strip.Color(255,175,0);
+            r = ((base >> 16) & 255) * brightness / 255;
+            g = ((base >> 8) & 255) * brightness / 255;
+            b = (base & 255) * brightness / 255;
+        }
+        strip.setPixelColor(i, strip.Color(r, g, b));
+    }
+}
+
+// Wave runners: beat-launched, 2 bright LEDs + 5 fading tail LEDs.
+static const uint8_t WAVE_RUNNERS = 8;
+uint32_t waveStarts[WAVE_RUNNERS] = {};
+int8_t waveDirections[WAVE_RUNNERS] = {};
+uint8_t waveWrite = 0;
+uint32_t waveLastBeat = 0;
+uint32_t waveBeatSerial = 0;void resetWaveRunners() {
+    for (int i=0;i<WAVE_RUNNERS;i++) waveStarts[i]=0;
+    waveWrite=0; waveLastBeat=bpmFlashCount; waveBeatSerial=0;
+}
+void updateWaveRunners() {
+    uint32_t now=millis();
+    if (waveLastBeat != bpmFlashCount) {
+        uint32_t beats=bpmFlashCount-waveLastBeat;
+        waveLastBeat=bpmFlashCount;
+        if (audioIsActive) for(uint32_t j=0;j<min(beats,(uint32_t)WAVE_RUNNERS);j++) {
+            int dir = waveVariant==1 ? 1 : waveVariant==2 ? -1 : ((waveBeatSerial++ & 1) ? -1 : 1);
+            waveStarts[waveWrite]=now ? now : 1;
+            waveDirections[waveWrite]=dir;
+            waveWrite=(waveWrite+1)%WAVE_RUNNERS;
+        }
+    }
+    strip.clear();
+    float tempo=manualBPM ? manualBPMValue : (estimatedBPM>0 ? estimatedBPM : 120.0f);
+    float speed=NUM_LEDS * constrain(tempo,75.0f,180.0f) / 120000.0f; // traverse in ~2 beats
+    for(int k=0;k<WAVE_RUNNERS;k++) {
+        if(!waveStarts[k])continue;
+        float travel=(now-waveStarts[k])*speed;
+        if(travel>=NUM_LEDS+7){waveStarts[k]=0;continue;}
+        int dir=waveDirections[k];
+        int head=(int)travel;
+        for(int tail=0;tail<7;tail++) {
+            int position=(dir>0 ? head-tail : (int)NUM_LEDS-1-head+tail);
+            if(position<0 || position>=NUM_LEDS)continue;
+            uint8_t level=tail<2 ? 255 : (uint8_t)(210-(tail-2)*45);
+            uint32_t base=waveColor==5 ? strip.gamma32(strip.ColorHSV((uint16_t)((uint32_t)position*65535/NUM_LEDS))) :
+                waveColor==0 ? (position < NUM_LEDS*0.5f ? strip.Color(0,255,0) : position < NUM_LEDS*0.7f ? strip.Color(255,200,0) : strip.Color(255,0,0)) :
+                waveColor==1 ? strip.Color(0,100,255) :
+                waveColor==2 ? strip.Color(255,0,0) :
+                waveColor==3 ? strip.Color(160,0,255) : strip.Color(255,175,0);
+            uint32_t old=strip.getPixelColor(position);
+            uint8_t r=max((int)((old>>16)&255),(int)(((base>>16)&255)*level/255));
+            uint8_t g=max((int)((old>>8)&255),(int)(((base>>8)&255)*level/255));
+            uint8_t b=max((int)(old&255),(int)((base&255)*level/255));
+            strip.setPixelColor(position,strip.Color(r,g,b));
+        }
     }
 }
 
 void updateVU() {
     float displayVU =
-        expandVU(vu);
+        expandVU(constrain(vu * dynamicsFactor(), 0.0f, 1.0f));
 
     float displayPeak =
         expandVU(vuPeak);
@@ -1429,6 +1665,21 @@ void updateVU() {
     );
 
     strip.clear();
+    if (vuCentered) {
+        int half = NUM_LEDS / 2;
+        int lit = constrain((int)(displayVU * half), 0, half);
+        for(int i=0;i<lit;i++) {
+            int left=half-1-i, right=half+i;
+            if(left>=0) strip.setPixelColor(left,vuColorAt(i*2));
+            if(right<NUM_LEDS) strip.setPixelColor(right,vuColorAt(i*2));
+        }
+        if(vuPeak>0.01f) {
+            int peak=constrain((int)(displayPeak*half),0,half-1);
+            strip.setPixelColor(half-1-peak,vuColorAt(peak*2));
+            if(half+peak<NUM_LEDS) strip.setPixelColor(half+peak,vuColorAt(peak*2));
+        }
+        return;
+    }
 
     for (
         int i = 0;
@@ -1485,7 +1736,7 @@ void updateFFT() {
 
 // Fire2012-inspired one-dimensional flame with audio-triggered sparks.
 // Runs only on the LED task: no network polling or extra audio sampling.
-uint8_t fireHeat[NUM_LEDS] = {};
+uint8_t fireHeat[MAX_LEDS] = {};
 
 void updateFireSparks() {
     // Cooling and upward diffusion. LED 0 is the base of the flame.
@@ -1497,17 +1748,21 @@ void updateFireSparks() {
         fireHeat[i] = (uint8_t)(((int)fireHeat[i-1] + 2*(int)fireHeat[i-2]) / 3);
     }
     if (random(100) < 70) {
-        int y = random(min(NUM_LEDS, 8));
+        int y = random(0, min((int)NUM_LEDS, 8));
         fireHeat[y] = (uint8_t)min(255L, (long)fireHeat[y] + random(150, 256));
     }
 
     // Sparse music-reactive sparks, decaying independently of the fire.
-    static uint8_t spark[NUM_LEDS] = {};
-    float activity = constrain((signalRms - 250.0f) / 4500.0f, 0.0f, 1.0f);
+    static uint8_t spark[MAX_LEDS] = {};
+    float activity = constrain((signalRms - 250.0f) / 4500.0f * dynamicsFactor(), 0.0f, 1.0f);
     for (int i = 0; i < NUM_LEDS; ++i) {
-        spark[i] = (spark[i] > 38) ? spark[i] - 38 : 0;
+        // 30ms frame, ~0.4-0.8 second fade-out.
+        uint8_t fade = (uint8_t)random(10, 20);
+        spark[i] = spark[i] > fade ? spark[i] - fade : 0;
     }
-    if (activity > 0.08f && random(1000) < (int)(activity * 220.0f)) {
+    // Minimum sparkle even with quiet music; louder music adds sparks.
+    int sparkChance = (int)(18.0f + activity * 160.0f * dynamicsFactor());
+    if (random(1000) < sparkChance) {
         spark[random(NUM_LEDS)] = 255;
     }
     for (int i = 0; i < NUM_LEDS; ++i) {
@@ -1544,7 +1799,8 @@ void ledTask(void* parameter) {
             strip.show();
 
             outputOn = false;
-            if (currentMode == COMET_BEAT) resetComets();
+            if (currentMode == COMET_BEAT) resetParticles();
+            if (currentMode == RAINBOW_MUSIC) resetWaveRunners();
             previousMode = currentMode;
         }
 
@@ -1580,15 +1836,13 @@ void ledTask(void* parameter) {
                 flashCount = 1;
 
                 if (command == FLASH_DOUBLE) {
-                    flashStart[1] =
-                        commandTime +
-                        ENERGY_SECOND_FLASH_DELAY_MS;
-
-                    flashEnd[1] =
-                        flashStart[1] +
-                        ENERGY_FLASH_MS;
-
-                    flashCount = 2;
+                    uint8_t count = (currentMode == ENERGY_STROBE)
+                        ? constrain((int)energyFlashVariant, 1, 4) : 2;
+                    for (uint8_t k = 1; k < count; ++k) {
+                        flashStart[k] = commandTime + k * ENERGY_SECOND_FLASH_DELAY_MS;
+                        flashEnd[k] = flashStart[k] + ENERGY_FLASH_MS;
+                    }
+                    flashCount = count;
                 }
 
                 portEXIT_CRITICAL(&ledMux);
@@ -1617,8 +1871,17 @@ void ledTask(void* parameter) {
 
             portEXIT_CRITICAL(&ledMux);
 
-            if (shouldBeOn != outputOn) {
+            if (currentMode == BPM_AUTO && bpmColorVariant != 0 && bpmFlashCount > 0) {
+                shouldBeOn = true;  // hold last red/blue or rainbow color in silence
+            }
+            static uint32_t lastShownBeat = 0;
+            static uint8_t lastShownVariant = 255;
+            bool colorChanged = (currentMode == BPM_AUTO && bpmColorVariant != 0 &&
+                (lastShownBeat != bpmFlashCount || lastShownVariant != bpmColorVariant));
+            if (shouldBeOn != outputOn || colorChanged) {
                 outputOn = shouldBeOn;
+                lastShownBeat = bpmFlashCount;
+                lastShownVariant = bpmColorVariant;
 
                 strip.clear();
 
@@ -1631,7 +1894,14 @@ void ledTask(void* parameter) {
                         strip.setPixelColor(
                             i,
                             strip.Color(
-                                255, 255, 255
+                                (currentMode == BPM_AUTO && bpmColorVariant == 1 && (bpmFlashCount % 2 == 0)) ? 255 :
+                                (currentMode == BPM_AUTO && bpmColorVariant == 1) ? 0 :
+                                (currentMode == BPM_AUTO && bpmColorVariant == 2) ? (uint8_t)(strip.gamma32(strip.ColorHSV((uint16_t)((bpmFlashCount * 10923UL) & 65535))) >> 16) : 255,
+                                (currentMode == BPM_AUTO && bpmColorVariant == 1) ? 0 :
+                                (currentMode == BPM_AUTO && bpmColorVariant == 2) ? (uint8_t)(strip.gamma32(strip.ColorHSV((uint16_t)((bpmFlashCount * 10923UL) & 65535))) >> 8) : 255,
+                                (currentMode == BPM_AUTO && bpmColorVariant == 1 && (bpmFlashCount % 2 == 1)) ? 255 :
+                                (currentMode == BPM_AUTO && bpmColorVariant == 1) ? 0 :
+                                (currentMode == BPM_AUTO && bpmColorVariant == 2) ? (uint8_t)strip.gamma32(strip.ColorHSV((uint16_t)((bpmFlashCount * 10923UL) & 65535))) : 255
                             )
                         );
                     }
@@ -1652,7 +1922,7 @@ void ledTask(void* parameter) {
                     currentMode ==
                     RAINBOW_MUSIC
                 ) {
-                    updateRainbow();
+                    if(waveVariant==0) updateRainbow(); else updateWaveRunners();
                 }
                 else if (
                     currentMode ==
@@ -1664,7 +1934,7 @@ void ledTask(void* parameter) {
                     updateFireSparks();
                 }
                 else if (currentMode == COMET_BEAT) {
-                    updateComet();
+                    updateParticles();
                 }
 
                 strip.show();
@@ -1886,9 +2156,10 @@ void updateScreen() {
     }
     else if (mode == COMET_BEAT) {
         canvas.setCursor(10, 27);
-        canvas.print("COMET BEAT");
+        canvas.print("PARTICLES");
         canvas.setCursor(10, 48);
-        if (estimatedBPM > 0) canvas.printf("BPM %.1f", estimatedBPM);
+        if (manualBPM) canvas.printf("MANUAL %.1f", manualBPMValue);
+        else if (estimatedBPM > 0) canvas.printf("BPM %.1f", estimatedBPM);
         else canvas.print("SEARCHING BPM");
         canvas.setCursor(10, 70);
         canvas.print(bpmLocked ? "LOCKED" : "LISTENING");
@@ -1896,10 +2167,10 @@ void updateScreen() {
     else if (mode == BPM_AUTO) {
         canvas.setCursor(10, 27);
 
-        if (estimatedBPM > 0.0f) {
+        if (manualBPM || estimatedBPM > 0.0f) {
             canvas.printf(
                 "BPM: %.1f",
-                estimatedBPM
+                manualBPM ? manualBPMValue : estimatedBPM
             );
         }
         else {
@@ -2050,12 +2321,63 @@ void resetEnergy() {
 WebServer webServer(80);
 DNSServer dnsServer;
 Preferences wifiPreferences;
+Preferences ledPreferences;
 
 const char* SETUP_SSID = "MusicLED-Setup";
 const char* SETUP_PASSWORD = "MusicLED123"; // Change before regular use (8+ chars)
 const char* HOST_NAME = "musicled";
 bool setupAPActive = false;
 bool webStarted = false;
+
+void applyModeChange(LedMode newMode);
+// Random Play: a selection must last 3 minutes AND music must be silent
+// for 3 continuous seconds before the next automatic selection.
+static bool randomPlay = false;
+static uint32_t randomSelectedAt = 0;
+static uint32_t randomSilentSince = 0;
+static int randomPreviousKey = -1;
+
+static void selectRandomEffect() {
+    // Each effect/submode/color combination is a possible selection.
+    // Fire has no color selector; Energy uses its flash-count variant.
+    int key, nextMode, sub, color;
+    do {
+        nextMode = random(0, 6);
+        sub = nextMode == 0 ? random(0, 4) : nextMode == 1 ? random(0, 2) :
+              nextMode == 2 ? random(0, 6) : nextMode == 4 ? random(1, 5) : 0;
+        color = nextMode == 0 || nextMode == 1 || nextMode == 2 ? random(0, 6) :
+                nextMode == 3 ? random(0, 3) : 0;
+        key = nextMode * 100 + sub * 10 + color;
+    } while (key == randomPreviousKey);
+    randomPreviousKey = key;
+    applyModeChange((LedMode)nextMode);
+    if (nextMode == RAINBOW_MUSIC) {
+        waveVariant = sub; waveColor = color; resetWaveRunners();
+    } else if (nextMode == VU_METER) {
+        vuCentered = (sub != 0);
+        static const VUColorMode vuPalette[6] = {VU_CLASSIC,VU_BLUE,VU_RED,VU_PURPLE,VU_GOLD,VU_RAINBOW};
+        vuColorMode = vuPalette[color];
+    } else if (nextMode == COMET_BEAT) {
+        particleVariant = sub; particleColor = color; resetParticles();
+    } else if (nextMode == BPM_AUTO) {
+        bpmColorVariant = color;
+    } else if (nextMode == ENERGY_STROBE) {
+        energyFlashVariant = sub;
+    }
+    randomSelectedAt = millis();
+    randomSilentSince = 0;
+}
+
+static void updateRandomPlay(uint32_t now) {
+    if (!randomPlay) return;
+    // Use the existing adaptive microphone gate, but require a fresh 3s
+    // quiet interval rather than its 1s activity hold time.
+    // lastMusicActivity records the last sample above the adaptive noise gate.
+    // This measures the full 3-second silence, without adding the 1s hold.
+    if (now - randomSelectedAt >= 180000UL &&
+        lastMusicActivity != 0 && now - lastMusicActivity >= 3000UL)
+        selectRandomEffect();
+}
 
 void applyModeChange(LedMode newMode) {
     if (newMode == mode) return;
@@ -2073,8 +2395,7 @@ String htmlHeader(const char* title) {
     String h = F("<!doctype html><html lang='no'><head><meta charset='utf-8'>"
                  "<meta name='viewport' content='width=device-width,initial-scale=1'>"
                  "<style>body{font:16px system-ui;background:#101827;color:#f2f5fa;"
-                 "max-width:520px;margin:30px auto;padding:16px}"
-                 "button,input,select{font:inherit;padding:12px;border-radius:9px;margin:6px 0}"
+                 "max-width:520px;margin:30px auto;padding:16px}"                 "button,input,select{font:inherit;padding:12px;border-radius:9px;margin:6px 0}"
                  "button{background:#1677ee;color:white;border:0;cursor:pointer}"
                  "a{color:#80bdff}.panel{background:#202d40;padding:18px;border-radius:14px}"
                  "label{display:block;margin-top:14px}input,select{box-sizing:border-box;width:100%}"
@@ -2113,10 +2434,10 @@ void showSetupPage() {
 void showControlPage() {
     String h = F(R"HTML(<!doctype html><html lang="no"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0b1020"><title>MusicLED Pads</title>
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="icon" type="image/png" href="/apple-touch-icon.png"><meta name="theme-color" content="#0b1020"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="MusicLED"><meta name="mobile-web-app-capable" content="yes"><title>MusicLED</title>
 <style>
 *{box-sizing:border-box}body{margin:0;background:#0b1020;color:#f4f7ff;font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif}
-.wrap{max-width:540px;margin:auto;min-height:100dvh;padding:22px 16px max(22px,env(safe-area-inset-bottom));display:flex;flex-direction:column}
+.wrap{max-width:540px;margin:auto;min-height:100dvh;padding:max(60px,env(safe-area-inset-top)) 16px max(22px,env(safe-area-inset-bottom));display:flex;flex-direction:column}
 .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
 h1{font-size:23px;letter-spacing:.04em;margin:0}.sub{font-size:12px;color:#8e9db8;margin-top:4px}
 .dot{width:9px;height:9px;background:#3bdca4;border-radius:50%;box-shadow:0 0 12px #3bdca4}
@@ -2127,25 +2448,70 @@ h1{font-size:23px;letter-spacing:.04em;margin:0}.sub{font-size:12px;color:#8e9db
 .pad .symbol{width:55px;height:55px;display:grid;place-items:center}.symbol svg{width:52px;height:52px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
 .pad .name{font-size:13px;font-weight:750;letter-spacing:.065em;text-align:center}.pad .hint{font-size:10px;color:#a1afc6;margin-top:-10px}
 .footer{margin-top:auto;padding-top:25px;display:flex;align-items:center;justify-content:space-between;color:#93a2bb;font-size:13px}
+.randomBtn{border:1px solid #38455f;background:#202a40;color:#d9e8ff;min-height:44px;padding:0 15px;border-radius:14px;display:flex;align-items:center;gap:9px;font:600 12px system-ui;letter-spacing:.05em;touch-action:manipulation}.randomBtn.on{background:#174a68;border-color:#55d9ff;color:#fff;box-shadow:0 0 12px #28b9fa44}.randomBtn svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .gear{border:1px solid #38455f;background:#202a40;color:white;width:51px;height:51px;border-radius:15px;display:grid;place-items:center;text-decoration:none}
 .gear svg{width:25px;height:25px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-#message{min-height:20px}
-</style></head><body><main class="wrap"><header class="top"><div><h1>MUSICLED</h1><div class="sub">LIVE PERFORMANCE PADS</div></div><div class="dot"></div></header>
-<section class="pads" id="pads">
-<button class="pad" data-mode="0" onclick="choose(0)"><span class="symbol"><svg viewBox="0 0 64 64"><path d="M8 39c8-22 16-22 24 0s16 22 24 0"/><path d="M8 24c8-22 16-22 24 0s16 22 24 0"/></svg></span><span class="name">RAINBOW</span><span class="hint">MUSIC</span></button>
+[hidden]{display:none!important}
+.gear{cursor:pointer;touch-action:manipulation}
+#settingsView{padding:4px 2px 30px}
+.settingsTop{display:flex;align-items:center;gap:16px;margin-bottom:16px}
+.settingsTop button,.tapBox button{border:0;border-radius:12px;background:#2366b9;color:white;padding:13px 16px;font:inherit;touch-action:manipulation}
+.settingsTop h2{font-size:21px;margin:0}
+#settingsView h3{margin:25px 0 10px}
+#settingsView label{display:block;margin:16px 0 7px}
+#settingsView input[type=range]{width:100%;height:32px}
+#settingsView input[type=radio]{width:auto}
+.help{font-size:13px;color:#a9b9d4}
+.tapBox{background:#15253a;padding:15px;border-radius:12px;text-align:center}
+#tapBpm{font-size:32px;font-weight:700;margin:8px}
+.tapBox .tapButton{display:block;width:100%;height:90px;font-size:24px;margin:12px 0}
+#settingsView a{color:#80bdff}
+.saveLed{background:#2366b9;color:white;border:0;border-radius:12px;padding:13px 16px;font:inherit;margin-top:12px}
+</style></head><body><main class="wrap"><header class="top"><div><h1>MusicLED</h1></div><div style="text-align:right"><div id="bpmDisplay" style="font-weight:700;font-size:19px">-- BPM</div><div id="bpmSource" class="sub">AUTO</div></div></header>
+<section id="homeView"><section class="pads" id="pads">
+<button class="pad" data-mode="0" onclick="choose(0)"><span class="symbol"><svg viewBox="0 0 64 64"><path d="M8 39c8-22 16-22 24 0s16 22 24 0"/><path d="M8 24c8-22 16-22 24 0s16 22 24 0"/></svg></span><span class="name">WAVE</span><span class="hint">RAINBOW · STANDARD</span></button>
 <button class="pad" data-mode="1" onclick="choose(1)"><span class="symbol"><svg viewBox="0 0 64 64"><rect x="10" y="40" width="8" height="14" rx="2"/><rect x="23" y="29" width="8" height="25" rx="2"/><rect x="36" y="18" width="8" height="36" rx="2"/><rect x="49" y="9" width="8" height="45" rx="2"/></svg></span><span class="name">VU METER</span><span class="hint">LEVEL</span></button>
-<button class="pad" data-mode="2" onclick="choose(2)"><span class="symbol"><svg viewBox="0 0 64 64"><path d="M10 48c15 0 19-28 42-32"/><circle cx="52" cy="16" r="6"/><path d="M7 55l15-17M15 56l14-13"/></svg></span><span class="name">COMET</span><span class="hint">CYAN</span></button>
-<button class="pad" data-mode="3" onclick="choose(3)"><span class="symbol"><svg viewBox="0 0 64 64"><path d="M9 33h11l7-16 10 31 7-15h11"/><path d="M22 9a25 25 0 1 1-13 43"/></svg></span><span class="name">BPM AUTO</span><span class="hint">BEAT</span></button>
+<button class="pad" data-mode="2" onclick="choose(2)"><span class="symbol"><svg viewBox="0 0 64 64"><path d="M11 36 Q30 2 57 16 Q40 13 28 30 Q23 36 21 42 Z" fill="currentColor" stroke="none"/><path d="M12 30l4 8 9 1-7 6 2 9-8-5-8 5 2-9-7-6 9-1z" transform="translate(6 -8)" fill="currentColor" stroke="none"/></svg></span><span class="name">PARTICLES</span><span class="hint">RAINBOW · BASS EXPLOSION</span></button>
+<button class="pad" data-mode="3" onclick="choose(3)"><span class="symbol"><svg viewBox="0 0 64 64"><path d="M9 33h11l7-16 10 31 7-15h11"/><path d="M22 9a25 25 0 1 1-13 43"/></svg></span><span class="name">BPM AUTO</span><span class="hint">WHITE</span></button>
 <button class="pad" data-mode="4" onclick="choose(4)"><span class="symbol"><svg viewBox="0 0 64 64"><path d="M36 5 14 35h16l-3 24 23-34H34z"/></svg></span><span class="name">ENERGY</span><span class="hint">STROBE</span></button>
 <button class="pad" data-mode="5" onclick="choose(5)"><span class="symbol"><svg viewBox="0 0 64 64"><path d="M34 5c4 14-6 18-3 27 6-3 9-9 10-14 19 20 15 37-8 40C10 59 8 42 18 29c1 11 7 13 9 13-5-14 0-27 7-37z"/></svg></span><span class="name">FIRE</span><span class="hint">&amp; SPARKS</span></button>
-</section><footer class="footer"><span id="message">Klar</span><a class="gear" href="/settings" aria-label="Innstillinger"><svg viewBox="0 0 24 24"><path d="M10 2h4l.8 2.6 2 .9 2.4-1.2 2.8 2.8-1.2 2.4.9 2L24 12l-2.3 1.5-.9 2 1.2 2.4-2.8 2.8-2.4-1.2-2 .9L14 23h-4l-.8-2.6-2-.9-2.4 1.2L2 17.9l1.2-2.4-.9-2L0 12l2.3-1.5.9-2L2 6.1l2.8-2.8 2.4 1.2 2-.9z" transform="translate(1 1) scale(.91)"/><circle cx="12" cy="12" r="3"/></svg></a></footer></main>
+</section><footer class="footer"><button type="button" id="randomBtn" class="randomBtn" onclick="randomPress()" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M4 7h3c5 0 5 10 10 10h3m-3-3 3 3-3 3M4 17h3c2 0 3-2 4-4m2-3c1-2 2-3 4-3h3m-3-3 3 3-3 3"/></svg><span>RANDOM</span></button><button type="button" class="gear" onclick="showSettings()" aria-label="Innstillinger"><svg viewBox="0 0 24 24"><path d="M10 2h4l.8 2.6 2 .9 2.4-1.2 2.8 2.8-1.2 2.4.9 2L24 12l-2.3 1.5-.9 2 1.2 2.4-2.8 2.8-2.4-1.2-2 .9L14 23h-4l-.8-2.6-2-.9-2.4 1.2L2 17.9l1.2-2.4-.9-2L0 12l2.3-1.5.9-2L2 6.1l2.8-2.8 2.4 1.2 2-.9z" transform="translate(1 1) scale(.91)"/><circle cx="12" cy="12" r="3"/></svg></button></footer></section>
+<section id="settingsView" hidden>
+<header class="settingsTop"><button type="button" onclick="showHome()">← Tilbake</button><h2>Innstillinger</h2></header>
+<h3>LED &amp; Audio</h3>
+<label>Dynamikk: <b id="dynVal">50%</b></label><input id="dynInput" type="range" min="0" max="100" step="5" value="50" oninput="document.getElementById('dynVal').textContent=this.value+'%'" onchange="fetch('/api/dynamics?value='+this.value)">
+<p class="help">50 % tilsvarer normal lydfølsomhet.</p>
+<label>Lysstyrke: <b id="level">60</b></label><input id="brightInput" type="range" min="1" max="255" value="60" oninput="document.getElementById('level').textContent=this.value" onchange="fetch('/api/brightness?value='+this.value)">
+<h3>BPM Control</h3>
+<label><input type="radio" name="bpmMode" id="autoMode" onchange="fetch('/api/bpm-mode?manual=0')" checked> AUTO</label>
+<label><input type="radio" name="bpmMode" id="manualMode" onchange="fetch('/api/bpm-mode?manual=1')"> MANUAL</label>
+<div class="tapBox"><div id="tapBpm">-- BPM</div><button type="button" class="tapButton" onclick="tap()">TAP BEAT</button><button type="button" onclick="fetch('/api/tap-reset').then(refreshBPM)">Nullstill</button></div>
+<h3>LED-stripe</h3>
+<label for="ledCountInput">Antall LED (1–300)</label><input id="ledCountInput" type="number" min="1" max="300" step="1" value="68" style="width:100%;padding:10px;font:inherit;border-radius:8px">
+<label for="ledPinInput">ESP32 GPIO (datapinne)</label><select id="ledPinInput" style="width:100%;padding:10px;font:inherit;border-radius:8px">
+<option value="0">GPIO0</option><option value="1" selected>GPIO1 (standard)</option><option value="2">GPIO2</option><option value="3">GPIO3</option><option value="4">GPIO4</option><option value="5">GPIO5</option><option value="6">GPIO6</option><option value="7">GPIO7</option><option value="8">GPIO8</option><option value="9">GPIO9</option><option value="10">GPIO10</option><option value="11">GPIO11</option><option value="12">GPIO12</option><option value="13">GPIO13</option><option value="14">GPIO14</option><option value="15">GPIO15</option><option value="16">GPIO16</option><option value="17">GPIO17</option><option value="18">GPIO18</option><option value="21">GPIO21</option></select>
+<p class="help">Velg kun en fysisk tilgjengelig, ledig GPIO på kortet. GPIO19/20 (USB) er utelatt. Endringer lagres og krever omstart.</p>
+<button type="button" class="saveLed" onclick="saveLedConfig()">Lagre LED-oppsett og start på nytt</button><p class="help" id="ledConfigStatus"></p>
+<h3>Skjerm &amp; App</h3><p class="help">Åpne MusicLED fra Hjem-skjermen på iPhone for webappvisning.</p>
+<h3>Nettverk</h3><a href="/wifi">Endre Wi-Fi-nettverk</a>
+<h3>Om</h3><p class="help">MusicLED v2.0 – Random Play</p><p><a href="https://github.com/kagjerde/M5-stick-test-LED-strip" target="_blank" rel="noopener noreferrer">GitHub – MusicLED kildekode</a></p>
+</section></main>
 <script>
 let active=)HTML");
     h += String((int)mode);
     h += F(R"HTML(;
 function highlight(n){active=n;document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',Number(b.dataset.mode)===n));}
+const waveColors=['CLASSIC','BLUE','RED','PURPLE','GOLD','RAINBOW'];
+const waveVariants=['STANDARD','TOP','BOTTOM','PING PONG'];
+let waveIndex=5,waveStyle=0,vuStyle=0;
 const vuColors=['CLASSIC','BLUE','RED','PURPLE','GOLD','RAINBOW'];
-const cometColors=['CYAN','BLUE','PURPLE','RED','GOLD','RAINBOW'];
+const particleColors=['CLASSIC','BLUE','RED','PURPLE','GOLD','RAINBOW'];
+const particleVariants=['BASS EXPLOSION','DIFFUSION','BREATHE','STREAMER','BOUNCING BALLS','FIREWORKS'];
+let particleStyle=0;
+const bpmColors=['WHITE','RED / BLUE','RAINBOW'];
+let bpmColorIndex=)HTML");
+    h += String((int)bpmColorVariant);
+    h += F(R"HTML(;
 let vuIndex=)HTML");
     // Initial VU color is injected by C++ for consistency with the physical button.
     const int vuIndex = vuColorMode == VU_CLASSIC ? 0 :
@@ -2153,35 +2519,128 @@ let vuIndex=)HTML");
         vuColorMode == VU_PURPLE ? 3 : vuColorMode == VU_GOLD ? 4 : 5;
     h += String(vuIndex);
     h += F(R"HTML(;
-let cometIndex=)HTML");
-    h += String((int)cometColor);
+let energyCount=)HTML");
+    h += String((int)energyFlashVariant);
     h += F(R"HTML(;
-function updateVUHint(){document.querySelector('[data-mode="1"] .hint').textContent=vuColors[vuIndex];}
-async function choose(n){const msg=document.getElementById('message');try{
+let particleIndex=)HTML");
+    h += String((int)particleColor);
+    h += F(R"HTML(;
+let randomEnabled=false;
+function showRandom(enabled){randomEnabled=enabled;const b=document.getElementById('randomBtn');b.classList.toggle('on',enabled);b.setAttribute('aria-pressed',String(enabled));}
+async function syncRandom(){try{const r=await fetch('/api/random-state',{cache:'no-store'});if(!r.ok)return;const d=await r.json();showRandom(d.enabled);highlight(d.mode);waveStyle=d.waveVariant;waveIndex=d.waveColor;vuStyle=d.vuCentered?1:0;vuIndex=d.vuColor;particleStyle=d.particleVariant;particleIndex=d.particleColor;bpmColorIndex=d.bpmColor;energyCount=d.energyFlashes;updateVUHint();updateWaveHint();updateParticleHint();document.querySelector('[data-mode="3"] .hint').textContent=bpmColors[bpmColorIndex];document.querySelector('[data-mode="4"] .hint').textContent=energyCount+' FLASH'+(energyCount===1?'':'ES');}catch(e){}}
+async function randomPress(){try{const r=await fetch('/api/random-next',{cache:'no-store'});if(r.ok)await syncRandom();}catch(e){}}
+function showSettings(){
+ document.getElementById('homeView').hidden=true;
+ document.getElementById('settingsView').hidden=false;
+ refreshSettings();
+}
+function showHome(){
+ document.getElementById('settingsView').hidden=true;
+ document.getElementById('homeView').hidden=false;
+}
+async function refreshSettings(){
+ try{const r=await fetch('/api/settings',{cache:'no-store'});if(!r.ok)return;
+ const d=await r.json();
+ document.getElementById('dynInput').value=d.dynamics;
+ document.getElementById('dynVal').textContent=d.dynamics+'%';
+ document.getElementById('brightInput').value=d.brightness;
+ document.getElementById('level').textContent=d.brightness;
+ document.getElementById(d.manual?'manualMode':'autoMode').checked=true;
+ document.getElementById('ledCountInput').value=d.ledCount;
+ document.getElementById('ledPinInput').value=d.ledPin;
+ }catch(e){}
+}
+async function saveLedConfig(){
+ const count=Number(document.getElementById('ledCountInput').value);
+ const pin=Number(document.getElementById('ledPinInput').value);
+ const status=document.getElementById('ledConfigStatus');
+ if(!Number.isInteger(count)||count<1||count>300){status.textContent='Velg 1–300 LED.';return;}
+ status.textContent='Lagrer og starter på nytt…';
+ try{const r=await fetch('/api/led-config?count='+count+'&pin='+pin,{method:'POST',cache:'no-store'});
+ if(!r.ok)throw Error(await r.text());
+ status.textContent='Lagret. Vent noen sekunder, og åpne MusicLED på nytt.';
+ }catch(e){status.textContent='Kunne ikke lagre: '+e.message;}
+}
+async function tap(){try{await fetch('/api/tap',{cache:'no-store'});document.getElementById('manualMode').checked=true;refreshBPM();}catch(e){}}
+function updateVUHint(){document.querySelector('[data-mode="1"] .hint').textContent=vuColors[vuIndex]+' · '+(vuStyle?'CENTER':'NORMAL');}
+function updateParticleHint(){document.querySelector('[data-mode="2"] .hint').textContent=particleColors[particleIndex]+' · '+particleVariants[particleStyle];}
+function updateWaveHint(){document.querySelector('[data-mode="0"] .hint').textContent=waveColors[waveIndex]+' · '+waveVariants[waveStyle];}
+const padTimers={};
+function choose(n){
+ if(n!==0 && n!==1 && n!==2){chooseNow(n,false);return;}
+ if(padTimers[n]){clearTimeout(padTimers[n]);padTimers[n]=null;chooseNow(n,true);return;}
+ padTimers[n]=setTimeout(()=>{padTimers[n]=null;chooseNow(n,false);},260);
+}
+async function chooseNow(n,doubleTap){try{
+showRandom(false);
+if(n===0 || n===1 || n===2){
+ const already=active===n;
+ let url='/api/mode?value='+n;
+ if(already)url=n===0?(doubleTap?'/api/wave-variant':'/api/wave-color'):n===1?(doubleTap?'/api/vu-variant':'/api/color'):(doubleTap?'/api/particle-variant':'/api/comet-color');
+ const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw Error();
+ if(already){if(n===0){if(doubleTap)waveStyle=(waveStyle+1)%4;else waveIndex=(waveIndex+1)%6;}
+ else if(n===1){if(doubleTap)vuStyle=1-vuStyle;else vuIndex=(vuIndex+1)%vuColors.length;}
+ else {if(doubleTap)particleStyle=(particleStyle+1)%6;else particleIndex=(particleIndex+1)%6;}}
+ highlight(n);updateVUHint();updateWaveHint();updateParticleHint();return;
+}
 const vuCycle=(n===1&&active===1);
-const cometCycle=(n===2&&active===2);
-const url=vuCycle?'/api/color':cometCycle?'/api/comet-color':'/api/mode?value='+n;
+const cometCycle=false;
+const bpmCycle=(n===3&&active===3);
+const energyCycle=(n===4&&active===4);
+const url=vuCycle?'/api/color':cometCycle?'/api/comet-color':bpmCycle?'/api/bpm-color':'/api/mode?value='+n;
 const r=await fetch(url,{cache:'no-store'});
 if(!r.ok)throw Error();if(vuCycle)vuIndex=(vuIndex+1)%vuColors.length;
-if(cometCycle)cometIndex=(cometIndex+1)%cometColors.length;
-highlight(n);updateVUHint();document.querySelector('[data-mode="2"] .hint').textContent=cometColors[cometIndex];
-msg.textContent=vuCycle?'VU: '+vuColors[vuIndex]:cometCycle?'COMET: '+cometColors[cometIndex]:'Modus valgt';
-}catch(e){msg.textContent='Ingen kontakt';}}
-highlight(active);updateVUHint();document.querySelector('[data-mode="2"] .hint').textContent=cometColors[cometIndex];
+if(cometCycle)particleIndex=(particleIndex+1)%particleColors.length;
+if(bpmCycle)bpmColorIndex=(bpmColorIndex+1)%bpmColors.length;
+if(energyCycle)energyCount=energyCount%4+1;
+highlight(n);updateVUHint();updateParticleHint();
+document.querySelector('[data-mode="3"] .hint').textContent=bpmColors[bpmColorIndex];
+document.querySelector('[data-mode="4"] .hint').textContent=energyCount+' FLASH'+(energyCount===1?'':'ES');
+
+}catch(e){console.warn('Ingen kontakt med MusicLED',e);}}
+highlight(active);updateVUHint();updateWaveHint();updateParticleHint();document.querySelector('[data-mode="4"] .hint').textContent=energyCount+' FLASH'+(energyCount===1?'':'ES');
+async function refreshBPM(){try{const r=await fetch('/api/bpm',{cache:'no-store'});if(!r.ok)return;const d=await r.json();document.getElementById('bpmDisplay').textContent=d.bpm>0?Math.round(d.bpm)+' BPM':'-- BPM';document.getElementById('bpmSource').textContent=d.manual?'MANUAL':'AUTO';document.getElementById('tapBpm').textContent=d.bpm>0?Math.round(d.bpm)+' BPM':'-- BPM';}catch(e){}}
+refreshBPM();syncRandom();setInterval(refreshBPM,3000);setInterval(syncRandom,2000);
 </script></body></html>)HTML");
     webServer.send(200, "text/html; charset=utf-8", h);
 }
 
 void showSettingsPage() {
     String h = htmlHeader("MusicLED innstillinger");
-    h += F("<p><a href='/'>← Tilbake til pads</a></p>"
-           "<label>Lysstyrke: <span id='level'>");
+    h += F(R"HTML(<p><a href="/">&#8592; Tilbake til pads</a></p>
+<h3>LED &amp; Audio</h3><label>Dynamikk: <b id="dynVal">)HTML");
+    h += String(dynamicsPercent);
+    h += F(R"HTML(%</b></label><input type="range" min="0" max="100" step="5" value=")HTML");
+    h += String(dynamicsPercent);
+    h += F(R"HTML(" oninput="document.getElementById('dynVal').textContent=this.value" onchange="fetch('/api/dynamics?value='+this.value)">
+<p style="font-size:12px;color:#9baac3">50% tilsvarer dagens dynamikk.</p>
+<label>Lysstyrke: <b id="level">)HTML");
     h += String(currentBrightness);
-    h += F("</span></label><input type='range' min='1' max='255' value='");
+    h += F(R"HTML(</b></label><input type="range" min="1" max="255" value=")HTML");
     h += String(currentBrightness);
-    h += F("' oninput='document.getElementById(\"level\").textContent=this.value' "
-           "onchange='fetch(\"/api/brightness?value=\"+this.value)'>"
-           "<p><a href='/wifi'>Endre Wi-Fi-nettverk</a></p>");
+    h += F(R"HTML(" oninput="document.getElementById('level').textContent=this.value" onchange="fetch('/api/brightness?value='+this.value)">
+<hr><h3>BPM Control</h3>
+<label><input style="width:auto" type="radio" name="bpmMode" value="auto" )HTML");
+    if (!manualBPM) h += F("checked");
+    h += F(R"HTML( onchange="fetch('/api/bpm-mode?manual=0')"> AUTO</label>
+<label><input style="width:auto" type="radio" name="bpmMode" value="manual" )HTML");
+    if (manualBPM) h += F("checked");
+    h += F(R"HTML( onchange="fetch('/api/bpm-mode?manual=1')"> MANUAL</label>
+<div style="text-align:center;padding:12px;background:#15253a;border-radius:12px">
+<div id="tapBpm" style="font-size:32px;font-weight:700">-- BPM</div>
+<button style="width:100%;height:90px;font-size:24px" onclick="tap()">TAP BEAT</button>
+<button onclick="fetch('/api/tap-reset').then(refreshBpm)">Nullstill</button>
+</div>
+<hr><h3>Skjerm &amp; App</h3>
+<button id="fullscreenBtn" onclick="toggleFullscreen()">Fullskjerm av/på</button>
+<p id="fullscreenHelp" style="font-size:13px;color:#a9b9d4">På iPhone: Åpne i Safari, velg Del og Legg til på Hjem-skjerm. Åpne deretter fra ikonet.</p>
+<hr><h3>Nettverk</h3><p><a href="/wifi">Endre Wi-Fi-nettverk</a></p>
+<script>
+async function refreshBpm(){try{const r=await fetch('/api/bpm',{cache:'no-store'});const d=await r.json();document.getElementById('tapBpm').textContent=d.bpm>0?Math.round(d.bpm)+' BPM':'-- BPM';}catch(e){}}
+async function tap(){await fetch('/api/tap');document.querySelector('input[value="manual"]').checked=true;refreshBpm();}
+async function toggleFullscreen(){if(document.fullscreenElement){await document.exitFullscreen();}else if(document.documentElement.requestFullscreen){await document.documentElement.requestFullscreen();}else{document.getElementById('fullscreenHelp').textContent='På iPhone: Safari → Del → Legg til på Hjem-skjerm. Fullskjermknappen støttes ikke av iOS Chrome.';}}
+refreshBpm();setInterval(refreshBpm,3000);
+</script>)HTML");
     h += htmlFooter();
     webServer.send(200, "text/html; charset=utf-8", h);
 }
@@ -2219,12 +2678,54 @@ void beginWiFi() {
         beginSetupAP();
     }
 
+    webServer.on("/apple-touch-icon.png", HTTP_GET, []() {
+        webServer.sendHeader("Cache-Control", "public, max-age=3600");
+        webServer.setContentLength(sizeof(MUSICLED_ICON_PNG));
+        webServer.send(200, "image/png", "");
+        webServer.client().write(MUSICLED_ICON_PNG, sizeof(MUSICLED_ICON_PNG));
+    });
     webServer.on("/", HTTP_GET, []() {
+        webServer.sendHeader("Cache-Control", "no-store, no-cache, must-revalidate");
         if (setupAPActive) showSetupPage();
         else showControlPage();
     });
     webServer.on("/settings", HTTP_GET, []() {
-        if (setupAPActive) showSetupPage(); else showSettingsPage();
+        if (setupAPActive) showSetupPage();
+        else { webServer.sendHeader("Location", "/", true); webServer.send(302, "text/plain", ""); }
+    });
+    webServer.on("/api/settings", HTTP_GET, []() {
+        String json = String("{\"dynamics\":") + String((int)dynamicsPercent) +
+            ",\"brightness\":" + String((int)currentBrightness) +
+            ",\"manual\":" + (manualBPM ? "true" : "false") +
+            ",\"ledCount\":" + String(NUM_LEDS) +
+            ",\"ledPin\":" + String((int)ledPin) + "}";
+        webServer.sendHeader("Cache-Control", "no-store");
+        webServer.send(200, "application/json", json);
+    });
+    webServer.on("/api/led-config", HTTP_POST, []() {
+        if (setupAPActive) { webServer.send(403, "text/plain", "Setup mode"); return; }
+        if (!webServer.hasArg("count") || !webServer.hasArg("pin")) {
+            webServer.send(400, "text/plain", "Missing count/pin"); return;
+        }
+        String countArg = webServer.arg("count");
+        String pinArg = webServer.arg("pin");
+        for (unsigned i=0; i<countArg.length(); ++i) if (!isDigit(countArg[i])) {
+            webServer.send(400, "text/plain", "Invalid LED count"); return;
+        }
+        for (unsigned i=0; i<pinArg.length(); ++i) if (!isDigit(pinArg[i])) {
+            webServer.send(400, "text/plain", "Invalid GPIO"); return;
+        }
+        int count = countArg.toInt();
+        int pin = pinArg.toInt();
+        if (count < 1 || count > MAX_LEDS || pin < 0 || pin > 21 || pin == 19 || pin == 20) {
+            webServer.send(400, "text/plain", "LED count or GPIO out of range"); return;
+        }
+        ledPreferences.putUShort("count", (uint16_t)count);
+        ledPreferences.putUChar("pin", (uint8_t)pin);
+        webServer.send(200, "text/plain", "Saved, restarting");
+        webServer.client().flush();
+        delay(350);
+        ESP.restart();
     });
     webServer.on("/wifi", HTTP_GET, showSetupPage);
     webServer.on("/save", HTTP_POST, []() {
@@ -2240,24 +2741,114 @@ void beginWiFi() {
         delay(500);
         ESP.restart();
     });
+    webServer.on("/api/random-next", HTTP_GET, []() {
+        if (setupAPActive) { webServer.send(403, "text/plain", "Setup mode"); return; }
+        randomPlay = true;
+        // Clear pending manual commands to prevent them overriding this selection.
+        requestedMode = -1;
+        requestedColor = requestedWaveColor = requestedWaveVariant = false;
+        requestedVUVariant = requestedCometColor = requestedBPMColor = false;
+        requestedParticleVariant = requestedEnergyCycle = false;
+        selectRandomEffect();
+        webServer.sendHeader("Cache-Control", "no-store");
+        webServer.send(200, "text/plain", "OK");
+    });
+    webServer.on("/api/random-state", HTTP_GET, []() {
+        int vuc = vuColorMode == VU_CLASSIC ? 0 : vuColorMode == VU_BLUE ? 1 :
+            vuColorMode == VU_RED ? 2 : vuColorMode == VU_PURPLE ? 3 :
+            vuColorMode == VU_GOLD ? 4 : 5;
+        String json = String("{\"enabled\":") + (randomPlay ? "true" : "false") +
+            ",\"mode\":" + String((int)mode) +
+            ",\"waveVariant\":" + String((int)waveVariant) +
+            ",\"waveColor\":" + String((int)waveColor) +
+            ",\"vuCentered\":" + (vuCentered ? "true" : "false") +
+            ",\"vuColor\":" + String(vuc) +
+            ",\"particleVariant\":" + String((int)particleVariant) +
+            ",\"particleColor\":" + String((int)particleColor) +
+            ",\"bpmColor\":" + String((int)bpmColorVariant) +
+            ",\"energyFlashes\":" + String((int)energyFlashVariant) + "}";
+        webServer.sendHeader("Cache-Control", "no-store");
+        webServer.send(200, "application/json", json);
+    });
     webServer.on("/api/mode", HTTP_GET, []() {
+        randomPlay = false;
         if (setupAPActive) { webServer.send(403, "text/plain", "Setup mode"); return; }
         int value = webServer.arg("value").toInt();
         if (!webServer.hasArg("value") || value < 0 || value > 5) {
             webServer.send(400, "text/plain", "Invalid mode"); return;
         }
-        requestedMode = value;
+        if (value == ENERGY_STROBE && mode == ENERGY_STROBE) requestedEnergyCycle = true;
+        else requestedMode = value;
         webServer.send(200, "text/plain", "OK");
     });
+    webServer.on("/api/wave-color", HTTP_GET, []() {
+        randomPlay = false;
+        requestedWaveColor=true;webServer.send(200,"text/plain","OK");
+    });
+    webServer.on("/api/wave-variant", HTTP_GET, []() {
+        randomPlay = false;
+        requestedWaveVariant=true;webServer.send(200,"text/plain","OK");
+    });
+    webServer.on("/api/vu-variant", HTTP_GET, []() {
+        randomPlay = false;
+        requestedVUVariant=true;webServer.send(200,"text/plain","OK");
+    });
     webServer.on("/api/color", HTTP_GET, []() {
+        randomPlay = false;
         if (setupAPActive) { webServer.send(403, "text/plain", "Setup mode"); return; }
         requestedColor = true;
         webServer.send(200, "text/plain", "OK");
     });
     webServer.on("/api/comet-color", HTTP_GET, []() {
+        randomPlay = false;
         if (setupAPActive) { webServer.send(403, "text/plain", "Setup mode"); return; }
         requestedCometColor = true;
         webServer.send(200, "text/plain", "OK");
+    });
+    webServer.on("/api/particle-variant", HTTP_GET, []() {
+        randomPlay = false; requestedParticleVariant=true; webServer.send(200,"text/plain","OK"); });
+    webServer.on("/api/bpm-color", HTTP_GET, []() {
+        randomPlay = false;
+        requestedBPMColor = true;
+        webServer.send(200, "text/plain", "OK");
+    });
+    webServer.on("/api/dynamics", HTTP_GET, []() {
+        if (!webServer.hasArg("value")) { webServer.send(400, "text/plain", "Missing"); return; }
+        dynamicsPercent = (uint8_t)constrain(webServer.arg("value").toInt(), 0, 100);
+        webServer.send(200, "text/plain", "OK");
+    });
+    webServer.on("/api/bpm-mode", HTTP_GET, []() {
+        manualBPM = webServer.arg("manual") == "1";
+        nextBPMFlash = 0;
+        webServer.send(200, "text/plain", "OK");
+    });
+    webServer.on("/api/tap", HTTP_GET, []() {
+        uint32_t now = millis();
+        if (lastTapTime == 0 || now - lastTapTime > 2500) tapCount = 0;
+        lastTapTime = now;
+        if (tapCount < 6) tapTimes[tapCount++] = now;
+        else {
+            for (int i = 1; i < 6; i++) tapTimes[i-1] = tapTimes[i];
+            tapTimes[5] = now;
+        }
+        if (tapCount >= 2) {
+            float bpm = 60000.0f * (tapCount - 1) / (tapTimes[tapCount-1] - tapTimes[0]);
+            if (bpm >= 40 && bpm <= 240) manualBPMValue = bpm;
+        }
+        manualBPM = true;
+        nextBPMFlash = 0;
+        webServer.send(200, "text/plain", "OK");
+    });
+    webServer.on("/api/tap-reset", HTTP_GET, []() {
+        tapCount = 0; lastTapTime = 0;
+        webServer.send(200, "text/plain", "OK");
+    });
+    webServer.on("/api/bpm", HTTP_GET, []() {
+        float bpm = manualBPM ? manualBPMValue : estimatedBPM;
+        String json = String("{\"bpm\":") + String(bpm, 1)
+          + ",\"manual\":" + (manualBPM ? "true" : "false") + "}";
+        webServer.sendHeader("Cache-Control", "no-store");
+        webServer.send(200, "application/json", json);
     });
     webServer.on("/api/brightness", HTTP_GET, []() {
         if (setupAPActive) { webServer.send(403, "text/plain", "Setup mode"); return; }
@@ -2293,11 +2884,16 @@ void handleWeb() {
 
 void handleButtons() {
     if (M5.BtnA.wasPressed()) {
+        randomPlay = false;
         requestedMode = ((int)mode + 1) % 6;
+    }
+    if (M5.BtnB.wasPressed()) randomPlay = false;
+    if (mode == ENERGY_STROBE && M5.BtnB.wasPressed()) {
+        requestedEnergyCycle = true;
     }
 
     if (mode == COMET_BEAT && M5.BtnB.wasPressed()) {
-        nextCometColor();
+        particleColor=(particleColor+1)%6;
     }
     if (
         mode == VU_METER &&
@@ -2316,6 +2912,7 @@ void handleButtons() {
 
 void setup() {
     Serial.begin(115200);
+    randomSeed(esp_random());
 
     auto cfg = M5.config();
     M5.begin(cfg);
@@ -2347,6 +2944,15 @@ void setup() {
         }
     }
 
+    // Load saved LED configuration before initializing the NeoPixel driver.
+    ledPreferences.begin("musicled-led", false);
+    NUM_LEDS = constrain((int)ledPreferences.getUShort("count", DEFAULT_NUM_LEDS), 1, (int)MAX_LEDS);
+    int storedPin = (int)ledPreferences.getUChar("pin", DEFAULT_LED_PIN);
+    // GPIO 19/20 are USB on ESP32-S3; exclude them from the UI/configuration.
+    ledPin = (storedPin >= 0 && storedPin <= 21 && storedPin != 19 && storedPin != 20)
+        ? (uint8_t)storedPin : DEFAULT_LED_PIN;
+    strip.updateLength(NUM_LEDS);
+    strip.setPin(ledPin);
     strip.begin();
     strip.setBrightness(
         BRIGHTNESS
@@ -2409,6 +3015,13 @@ void loop() {
         requestedMode = -1;
         applyModeChange((LedMode)next);
     }
+    if (requestedEnergyCycle) {
+        requestedEnergyCycle = false;
+        energyFlashVariant = (energyFlashVariant % 4) + 1;
+    }
+    if (requestedWaveColor) {requestedWaveColor=false;waveColor=(waveColor+1)%6;}
+    if (requestedWaveVariant) {requestedWaveVariant=false;waveVariant=(waveVariant+1)%4;resetBPM();resetWaveRunners();}
+    if (requestedVUVariant) {requestedVUVariant=false;vuCentered=!vuCentered;}
     if (requestedColor) {
         requestedColor = false;
         if (mode != VU_METER) applyModeChange(VU_METER);
@@ -2416,23 +3029,44 @@ void loop() {
         silenceStart = 0;
         silenceTriggered = false;
     }
+    if (requestedParticleVariant) {requestedParticleVariant=false;if(mode!=COMET_BEAT)applyModeChange(COMET_BEAT);particleVariant=(particleVariant+1)%6;resetParticles();}
     if (requestedCometColor) {
         requestedCometColor = false;
         if (mode != COMET_BEAT) applyModeChange(COMET_BEAT);
-        nextCometColor();
+        particleColor=(particleColor+1)%6;
+    }
+    if (requestedBPMColor) {
+        requestedBPMColor = false;
+        if (mode != BPM_AUTO) applyModeChange(BPM_AUTO);
+        bpmColorVariant = (bpmColorVariant + 1) % 3;
     }
     handleWeb();
 
     analyzeAudio();
+    handleWeb(); // service requests again after the blocking microphone read
+    uint32_t audioNow = millis();
+    // Adaptive microphone noise gate. RMS above a fixed threshold alone
+    // can falsely classify fan/electronic noise as continuous music.
+    if (!musicGateInitialized) {
+        musicNoiseFloor = rms;
+        musicGateInitialized = true;
+    }
+    // Follow falling noise quickly and rising noise very slowly.
+    float noiseAlpha = (rms < musicNoiseFloor) ? 0.08f : 0.0003f;
+    musicNoiseFloor += (rms - musicNoiseFloor) * noiseAlpha;
+    float activityThreshold = max(BPM_MIN_RMS, musicNoiseFloor * 1.8f + 130.0f);
+    if (rms > activityThreshold) lastMusicActivity = audioNow;
+    audioIsActive = lastMusicActivity != 0 && audioNow - lastMusicActivity < MUSIC_SILENCE_MS;
+    updateRandomPlay(audioNow);
 
     if (
-        mode == RAINBOW_MUSIC ||
+        (mode == RAINBOW_MUSIC && waveVariant == 0) ||
         mode == VU_METER
     ) {
         updatePeak();
     }
 
-    if (mode == BPM_AUTO || mode == COMET_BEAT) {
+    if (mode == BPM_AUTO || mode == COMET_BEAT || (mode == RAINBOW_MUSIC && waveVariant != 0)) {
         updateBPMClock();
     }
 
