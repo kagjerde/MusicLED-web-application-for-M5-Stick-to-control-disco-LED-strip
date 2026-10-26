@@ -222,6 +222,7 @@ void nextCometColor() { cometColor = (CometColor)(((int)cometColor + 1) % 6); }
 
 float vuPeak = 0.0f;
 uint32_t lastPeakUpdate = 0;
+uint32_t vuPeakHoldUntil = 0;
 
 const float PEAK_FALL_SPEED =
     12.0f / NUM_LEDS;
@@ -373,8 +374,19 @@ uint32_t paletteColorAt(uint8_t id, uint16_t position);
 uint32_t saturatedPaletteColor(uint32_t color,uint8_t id);
 uint32_t fireworkFragmentColor(uint16_t hue,uint8_t brightness) {
   uint8_t id=activePalette(COMET_BEAT);
-  uint32_t c=id ? saturatedPaletteColor(paletteStopColor(id,(uint32_t)hue*paletteStopCount(id)/65536UL),id)
+  uint32_t c=id ? paletteStopColor(id,(uint32_t)hue*paletteStopCount(id)/65536UL)
                 : strip.ColorHSV(hue,255,255);
+  // Preserve the exact palette stop hue; remove its shared white component
+  // for chromatic colors so explosion fragments never look pastel/washed out.
+  uint8_t r=(c>>16)&255,g=(c>>8)&255,b=c&255;
+  uint8_t hi=max((int)r,max((int)g,(int)b));
+  uint8_t lo=min((int)r,min((int)g,(int)b));
+  if(hi>lo && lo>0){
+    r=(uint16_t)(r-lo)*hi/(hi-lo);
+    g=(uint16_t)(g-lo)*hi/(hi-lo);
+    b=(uint16_t)(b-lo)*hi/(hi-lo);
+    c=strip.Color(r,g,b);
+  }
   return strip.Color(((c>>16)&255)*brightness/255,((c>>8)&255)*brightness/255,(c&255)*brightness/255);
 }
 static float fireworkPower=0.0f; // Captured from music strength at rocket launch
@@ -465,17 +477,19 @@ void updateParticles(){
    particleRocket+=particleRocketVel*dt;particleRocketVel-=55.0f*dt;
    int head=(int)roundf(particleRocket);
    particlePaintExclusive(head,strip.Color(255,255,255));
-   particlePaintExclusive(head-1,strip.Color(80,80,80));
    if(particleRocketVel<=0 || particleRocket>=NUM_LEDS-2){
      rocketActive=false;
      // The explosion happens after launch, not necessarily on the next beat.
      const float power=fireworkPower;
       const int fragments=12+(int)(power*8.0f); // 12 soft to 20 strong
       const float spread=0.65f+random(75)*.01f;
-      for(int k=0;k<fragments;k++){
-        const float velocity=(random(2)?1.0f:-1.0f)*(12.0f+random(12,28)*spread);
-        particleSpawn(particleRocket,velocity,0.90f+power*0.22f+random(10)*.01f,5,
-                      (uint16_t)(particleRocketHue+random(65536)));
+      // Matched outward pairs: equal speed in both directions, no gravity.
+      for(int k=0;k<fragments;k+=2){
+        const float velocity=12.0f+random(12,28)*spread;
+        const float life=0.90f+power*0.22f+random(10)*.01f;
+        const uint16_t hue=(uint16_t)(particleRocketHue+random(65536));
+        particleSpawn(particleRocket,-velocity,life,5,hue);
+        if(k+1<fragments)particleSpawn(particleRocket,velocity,life,5,hue);
       }
    }
  }
@@ -509,12 +523,16 @@ void updateParticles(){
      for(int k=0;k<4;k++)particleAdd((int)(p.pos-k*(p.vel>0?1:-1)),particleRGB(p.hue,(uint8_t)(255*p.life*(1.0f-.22f*k))));
    }else if(p.type==4||p.type==5){
      // Gravity, in LED units per second squared. Balls bounce with energy loss.
-     p.pos+=p.vel*dt;p.vel-=55.0f*dt;
-     if(p.pos>=NUM_LEDS-1){p.pos=NUM_LEDS-1;p.vel=-fabsf(p.vel)*.7f;}
-     if(p.pos<=0){
-       p.pos=0;
-       if(p.type==4&&fabsf(p.vel)>9)p.vel=-p.vel*.63f;
-       else {p.active=false;continue;}
+     p.pos+=p.vel*dt;
+     if(p.type==4)p.vel-=55.0f*dt; // Firework fragments travel evenly outward.
+     if(p.type==5 && (p.pos<0 || p.pos>=NUM_LEDS)){p.active=false;continue;}
+     if(p.type==4){
+       if(p.pos>=NUM_LEDS-1){p.pos=NUM_LEDS-1;p.vel=-fabsf(p.vel)*.7f;}
+       if(p.pos<=0){
+         p.pos=0;
+         if(fabsf(p.vel)>9)p.vel=-p.vel*.63f;
+         else {p.active=false;continue;}
+       }
      }
      if(p.type==5){
        // Fragments travel at most 20-30 LEDs from the burst, then disappear.
@@ -880,8 +898,9 @@ void updatePeak() {
 
     if (vu > vuPeak) {
         vuPeak = vu;
+        vuPeakHoldUntil = now + 350; // Hold peak visibly before its original falling speed.
     }
-    else {
+    else if ((int32_t)(now - vuPeakHoldUntil) >= 0) {
         vuPeak -=
             PEAK_FALL_SPEED * dt;
 
@@ -2625,6 +2644,7 @@ void applyModeChange(LedMode newMode) {
     resetEnergy();
     vuPeak = 0.0f;
     lastPeakUpdate = 0;
+    vuPeakHoldUntil = 0;
     silenceStart = 0;
     silenceTriggered = false;
     mode = newMode;
