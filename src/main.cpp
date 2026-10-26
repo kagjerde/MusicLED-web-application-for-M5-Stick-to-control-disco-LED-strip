@@ -3003,8 +3003,8 @@ function renderPalettes(){
  const root=document.getElementById('paletteGroups');root.replaceChildren();
  const reverseButton=document.getElementById('paletteReverseButton');
  reverseButton.textContent=paletteReversed[active]?'⇅ Reversert':'⇅ Reverser';
- document.getElementById('paletteDefaultButton').setAttribute('aria-pressed',String(paletteTemporary<0&&paletteSaved[active]===0));
- document.getElementById('paletteModeName').textContent='Aktiv effekt: '+paletteNames[active]+' · Lagret: '+(paletteSaved[active]===0?'DEFAULT':paletteLabel(paletteSaved[active]));
+ document.getElementById('paletteDefaultButton').setAttribute('aria-pressed',String(randomEnabled?paletteTemporary===0:paletteTemporary<0&&paletteSaved[active]===0));
+ document.getElementById('paletteModeName').textContent='Aktiv effekt: '+paletteNames[active]+' · Lagret: '+(randomEnabled?(paletteTemporary===0?'DEFAULT':paletteLabel(paletteTemporary)):(paletteSaved[active]===0?'DEFAULT':paletteLabel(paletteSaved[active])));
  let id=1;
  const paletteIds=[[1,2,3,4,33,34,35,36],[5,6,7,8,37,38,39,40,41,42,43,44],Array.from({length:8},(_,i)=>9+i),Array.from({length:8},(_,i)=>17+i),Array.from({length:8},(_,i)=>25+i)];
  paletteGroups.forEach((group,g)=>{
@@ -3013,7 +3013,7 @@ function renderPalettes(){
  const grid=document.createElement('div');grid.className='paletteGrid';
  group[1].forEach((p,i)=>{
  const pid=paletteIds[g][i];const btn=document.createElement('button');
- btn.className='paletteTile'+((paletteTemporary>=0?paletteTemporary===pid:paletteSaved[active]===pid)?' selected':'');
+ btn.className='paletteTile'+((randomEnabled?paletteTemporary===pid:(paletteTemporary>=0?paletteTemporary===pid:paletteSaved[active]===pid))?' selected':'');
  btn.title=p[0];btn.onclick=()=>savePalette(pid);
  const sw=document.createElement('span');sw.className='paletteSwatch';
  p[1].forEach(c=>{const cell=document.createElement('i');cell.style.background=c;sw.appendChild(cell);});
@@ -3073,7 +3073,7 @@ async function tap(){try{await fetch('/api/tap',{cache:'no-store'});document.get
 // Home icons follow the actual selected effect variant and palette.
 const defaultIconColors=[['#ff3c49','#ffc13b','#25d6c4'],['#20d77d','#ffca38','#ff4545'],['#ff314e','#ffc83c','#17baff'],['#ffffff'],['#ffe253','#ffffff'],['#a51500','#ff5a00','#ffcf32']];
 function currentIconColors(mode){
- const id=paletteTemporary>0?paletteTemporary:paletteSaved[mode];
+ const id=randomEnabled?paletteTemporary:(paletteTemporary>0?paletteTemporary:paletteSaved[mode]);
  if(id>0){const groups=[[1,2,3,4,33,34,35,36],[5,6,7,8,37,38,39,40,41,42,43,44],[9,10,11,12,13,14,15,16],[17,18,19,20,21,22,23,24],[25,26,27,28,29,30,31,32]];
  for(let g=0;g<groups.length;g++){const i=groups[g].indexOf(id);if(i>=0)return paletteGroups[g][1][i][1];}}
  return defaultIconColors[mode];
