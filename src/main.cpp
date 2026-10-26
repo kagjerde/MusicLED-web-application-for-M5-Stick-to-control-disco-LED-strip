@@ -1860,6 +1860,22 @@ uint32_t paletteColorAt(uint8_t id, uint16_t position) {
     const uint8_t b = ((from&255)*(256-fraction) + (to&255)*fraction) >> 8;
     return strip.Color(r,g,b);
 }
+// Boost saturation by removing the shared white component from RGB.
+// Neutral colors stay neutral only in palettes explicitly containing white/grey.
+uint32_t saturatedPaletteColor(uint32_t color, uint8_t id) {
+    // White/grey palette and intentionally white-containing palettes.
+    if (id == 11 || id == 24 || id == 30 || id == 32) return color;
+    uint8_t r=(color>>16)&255, g=(color>>8)&255, b=color&255;
+    uint8_t low=min(r,min(g,b)), high=max(r,max(g,b));
+    if (high==0) return 0;
+    if (high==low) return color;
+    // Strong saturation without making the gradient excessively dark.
+    uint8_t remove=(uint16_t)low*95/100;
+    r-=remove;g-=remove;b-=remove;
+    uint8_t peak=max(r,max(g,b));
+    if (peak==0) return 0;
+    return strip.Color((uint16_t)r*255/peak,(uint16_t)g*255/peak,(uint16_t)b*255/peak);
+}
 void applyPaletteFrame(LedMode effect) {
     if (effect == ENERGY_STROBE) return; // Always white.
     uint8_t id = activePalette((uint8_t)effect);
@@ -1871,7 +1887,7 @@ void applyPaletteFrame(LedMode effect) {
         if (!intensity) continue;
         // Square the effect envelope: dark levels remain dark, peaks reach full color.
         const uint16_t level = ((uint32_t)intensity*intensity + 127) / 255;
-        uint32_t c = paletteColorAt(id,i);
+        uint32_t c = saturatedPaletteColor(paletteColorAt(id,i),id);
         strip.setPixelColor(i, strip.Color(
             ((c>>16)&255)*level/255,
             ((c>>8)&255)*level/255,
