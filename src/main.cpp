@@ -391,6 +391,9 @@ uint32_t fireworkFragmentColor(uint16_t hue,uint8_t brightness) {
   }
   return strip.Color(((c>>16)&255)*brightness/255,((c>>8)&255)*brightness/255,(c&255)*brightness/255);
 }
+struct FireworkCore {float pos;uint16_t hue;uint32_t born;uint16_t duration;bool active;};
+static FireworkCore fireworkCores[3]={};
+static uint8_t fireworkCoreNext=0;
 static float fireworkPower=0.0f; // Captured from music strength at rocket launch
 
 void resetParticles(){
@@ -400,6 +403,7 @@ void resetParticles(){
   particleLastLaunch=0;particleBurst=0;fireworkPower=0.0f;
   fireworkBassSerial=0;fireworkLastLaunch=0;
   for(auto &rocket:fireworkRockets)rocket.active=false;
+  for(auto &core:fireworkCores)core.active=false;
 }
 uint32_t particleRGB(uint16_t hue, uint8_t strength){
   // Moving particles (Diffusion and Bouncing Balls) retain one exact palette
@@ -513,10 +517,12 @@ void updateParticles(){
        rocket.active=false;
        const float origin=constrain(rocket.pos,0.0f,(float)(NUM_LEDS-1));
        const float power=rocket.power;
+       FireworkCore &core=fireworkCores[fireworkCoreNext++%3];
+       core={origin,rocket.hue,now,1100,true};
        const int fragments=12+(int)(power*8.0f);
        const float spread=0.65f+random(75)*.01f;
        for(int k=0;k<fragments;k+=2){
-         const float velocity=12.0f+random(12,28)*spread;
+         const float velocity=15.0f+random(12,28)*spread;
          const float life=0.90f+power*0.22f+random(10)*.01f;
          const uint16_t hue=(uint16_t)(rocket.hue+random(65536));
          particleSpawn(origin,-velocity,life,5,hue);
@@ -583,12 +589,32 @@ void updateParticles(){
      if(p.type==5 && strength<0.025f){p.active=false;continue;}
      uint8_t v=(uint8_t)(255.0f*strength);
      if(p.type==5){
-       particlePaintExclusive((int)roundf(p.pos),fireworkFragmentColor(p.hue,v));
-       int tail=(int)roundf(p.pos-p.vel*.03f);
-       particlePaintExclusive(tail,fireworkFragmentColor(p.hue,v/2));
-       particlePaintExclusive((int)roundf(p.pos-p.vel*.06f),fireworkFragmentColor(p.hue,v/4));
+       // Continuous tapered ray between burst center and the moving tip.
+       // Keep the ray colored and anchored instead of a detached flying dot.
+       int tip=(int)roundf(p.pos), center=(int)roundf(p.origin);
+       int length=abs(tip-center);
+       if(length>0){
+         for(int n=0;n<=length;n++){
+           float fraction=(float)n/length;
+           uint8_t rayLevel=(uint8_t)(v*(0.75f-0.28f*fraction));
+           particlePaintExclusive(center+(tip>=center?n:-n),fireworkFragmentColor(p.hue,rayLevel));
+         }
+       }
+       particlePaintExclusive(tip,fireworkFragmentColor(p.hue,v));
      }else particleAdd((int)roundf(p.pos),particleRGB(p.hue,v));
    }
+ }
+ // The luminous palette-colored core remains until the rays have faded.
+ if(particleVariant==5) for(auto &core:fireworkCores){
+   if(!core.active)continue;
+   uint32_t age=now-core.born;
+   if(age>=core.duration){core.active=false;continue;}
+   float fade=1.0f-(float)age/core.duration;
+   uint8_t level=(uint8_t)(235.0f*fade);
+   int center=(int)roundf(core.pos);
+   particlePaintExclusive(center,fireworkFragmentColor(core.hue,level));
+   if(center>0)particlePaintExclusive(center-1,fireworkFragmentColor(core.hue,level/2));
+   if(center<NUM_LEDS-1)particlePaintExclusive(center+1,fireworkFragmentColor(core.hue,level/2));
  }
 }
 void updateComet() {
@@ -1940,6 +1966,13 @@ static const uint32_t palettes8[][8] = {
     {0x174b4a,0x2b7e69,0x47977a,0x9e3563,0xbd4973,0x7a3c77,0x245a67,0x174b4a}, // 40 Jade / Berry
 };
 
+// Additional multicolor palettes from SchemeColor, expanded to eight stops.
+static const uint32_t palettesExtra[][8] = {
+ {0x801100,0xB62203,0xD73502,0xFC6400,0xFF7500,0xFAC000,0xFF7500,0xD73502}, // 41 Fire Flames
+ {0x7C0A02,0xB22222,0xE25822,0xF1BC31,0xF6F052,0xF1BC31,0xE25822,0xB22222}, // 42 Explode
+ {0xF69835,0xDD355C,0x120F52,0x8EF93D,0xDD1CDD,0xFFE925,0xDD1CDD,0x120F52}, // 43 Party Neon
+ {0xE90000,0xF3C900,0xEB40E1,0x00E938,0x0062D9,0xEB40E1,0xF3C900,0xE90000}  // 44 Party Night
+};
 static const uint32_t palettes4[][4] = {
     {0xf22525, 0xffb600, 0x0ab64a, 0x2567ed}, // 1
     {0xff00aa, 0x00e5ff, 0x9d4edd, 0xffee00}, // 2
@@ -1978,10 +2011,11 @@ static const uint32_t palettes2[][2] = {
 // One continuous gradient from bottom to top; no repeated patterns.
 uint8_t paletteStopCount(uint8_t id) {return (id<=7||id>=33)?8:id<=16?4:id<=24?1:2;}
 uint32_t paletteStopColor(uint8_t id,uint32_t beat) {
-    if(id<1||id>40) return strip.Color(255,255,255);
+    if(id<1||id>44) return strip.Color(255,255,255);
     uint8_t count=paletteStopCount(id);
     uint8_t index=(uint8_t)(beat%count);
     if(id<=7)return palettes8[id-1][index];
+    if(id>=41)return palettesExtra[id-41][index];
     if(id>=33)return palettes8[id-26][index];
     if(id<=16)return palettes4[id-8][index];
     if(id<=24)return palettes1[id-17][0];
@@ -2000,10 +2034,11 @@ uint16_t vividPaletteHue(uint32_t color) {
     return (uint16_t)(sector*(65536.0f/6.0f));
 }
 uint32_t paletteColorAt(uint8_t id, uint16_t position) {
-    if (id < 1 || id > 40) return 0;
+    if (id < 1 || id > 44) return 0;
     const uint32_t* colors;
     uint8_t count;
     if (id <= 7)       { colors = palettes8[id-1]; count = 8; }
+    else if (id >= 41) { colors = palettesExtra[id-41]; count = 8; }
     else if (id >= 33) { colors = palettes8[id-26]; count = 8; }
     else if (id <= 16) { colors = palettes4[id-8]; count = 4; }
     else if (id <= 24) { colors = palettes1[id-17]; count = 1; }
@@ -2052,7 +2087,7 @@ void applyPaletteFrame(LedMode effect) {
     if (effect == ENERGY_STROBE || effect == RAINBOW_MUSIC) return; // Wave renders palettes in its own animated renderer.
     if (effect == COMET_BEAT && (particleVariant == 3 || particleVariant == 4 || particleVariant == 5)) return; // Moving particles use fixed palette-stop colors.
     uint8_t id = activePalette((uint8_t)effect);
-    if (!id || id > 40) return; // DEFAULT retains original effect colors.
+    if (!id || id > 44) return; // DEFAULT retains original effect colors.
     for (uint16_t i=0; i<NUM_LEDS; i++) {
         uint32_t old = strip.getPixelColor(i);
         uint8_t r=(old>>16)&255, g=(old>>8)&255, b=old&255;
@@ -2918,7 +2953,11 @@ const paletteGroups=[
  ['Plum Night',['#120c24','#35224d','#57335e','#66415b','#332f56','#1a2441','#281532','#120c24']],
  ['Deep Brass',['#071e25','#164048','#275954','#71613d','#59472c','#23434a','#112e3a','#071e25']],
  ['Indigo / Terracotta',['#172e8b','#3259b4','#548ac4','#bb593e','#d08043','#9b3d55','#3a4d9e','#172e8b']],
- ['Jade / Berry',['#174b4a','#2b7e69','#47977a','#9e3563','#bd4973','#7a3c77','#245a67','#174b4a']]
+ ['Jade / Berry',['#174b4a','#2b7e69','#47977a','#9e3563','#bd4973','#7a3c77','#245a67','#174b4a']],
+ ['Fire Flames',['#801100','#B62203','#D73502','#FC6400','#FF7500','#FAC000','#FF7500','#D73502']],
+ ['Explode',['#7C0A02','#B22222','#E25822','#F1BC31','#F6F052','#F1BC31','#E25822','#B22222']],
+ ['Party Neon',['#F69835','#DD355C','#120F52','#8EF93D','#DD1CDD','#FFE925','#DD1CDD','#120F52']],
+ ['Party Night',['#E90000','#F3C900','#EB40E1','#00E938','#0062D9','#EB40E1','#F3C900','#E90000']]
  ]],
  ['Fire farger',[
  ['Neon',['#ff00aa','#00e5ff','#9d4edd','#ffee00']],
@@ -2960,7 +2999,7 @@ function renderPalettes(){
  document.getElementById('paletteDefaultButton').setAttribute('aria-pressed',String(paletteTemporary<0&&paletteSaved[active]===0));
  document.getElementById('paletteModeName').textContent='Aktiv effekt: '+paletteNames[active]+' · Lagret: '+(paletteSaved[active]===0?'DEFAULT':paletteLabel(paletteSaved[active]));
  let id=1;
- const paletteIds=[[1,2,3,4,33,34,35,36],[5,6,7,8,37,38,39,40],Array.from({length:8},(_,i)=>9+i),Array.from({length:8},(_,i)=>17+i),Array.from({length:8},(_,i)=>25+i)];
+ const paletteIds=[[1,2,3,4,33,34,35,36],[5,6,7,8,37,38,39,40,41,42,43,44],Array.from({length:8},(_,i)=>9+i),Array.from({length:8},(_,i)=>17+i),Array.from({length:8},(_,i)=>25+i)];
  paletteGroups.forEach((group,g)=>{
  const section=document.createElement('section');section.className='paletteGroup';
  const title=document.createElement('h3');title.textContent=group[0];section.appendChild(title);
@@ -2975,7 +3014,7 @@ function renderPalettes(){
  });section.appendChild(grid);root.appendChild(section);
  });
 }
-function paletteLabel(id){const ids=[[1,2,3,4,33,34,35,36],[5,6,7,8,37,38,39,40],[9,10,11,12,13,14,15,16],[17,18,19,20,21,22,23,24],[25,26,27,28,29,30,31,32]];for(let g=0;g<ids.length;g++){const i=ids[g].indexOf(id);if(i>=0)return paletteGroups[g][1][i][0];}return 'DEFAULT';}
+function paletteLabel(id){const ids=[[1,2,3,4,33,34,35,36],[5,6,7,8,37,38,39,40,41,42,43,44],[9,10,11,12,13,14,15,16],[17,18,19,20,21,22,23,24],[25,26,27,28,29,30,31,32]];for(let g=0;g<ids.length;g++){const i=ids[g].indexOf(id);if(i>=0)return paletteGroups[g][1][i][0];}return 'DEFAULT';}
 async function loadPalettes(){try{
  const r=await fetch('/api/palettes',{cache:'no-store'});if(!r.ok)throw Error('Kunne ikke lese paletter');
  const d=await r.json();paletteSaved=d.saved;paletteTemporary=d.temporary;paletteReversed=d.reverse||[false,false,false,false,false,false];renderPalettes();
@@ -3188,7 +3227,7 @@ void beginWiFi() {
         for (unsigned i=0;i<m.length();i++) if (!isDigit(m[i])) { webServer.send(400,"text/plain","Invalid mode"); return; }
         for (unsigned i=0;i<p.length();i++) if (!isDigit(p[i])) { webServer.send(400,"text/plain","Invalid palette"); return; }
         int modeId=m.toInt(), paletteId=p.toInt();
-        if (modeId<0 || modeId>=6 || paletteId<0 || paletteId>40) {
+        if (modeId<0 || modeId>=6 || paletteId<0 || paletteId>44) {
             webServer.send(400,"text/plain","Out of range"); return;
         }
         if ((paletteId>=1 && paletteId<=4) || (paletteId>=33 && paletteId<=36)) {
