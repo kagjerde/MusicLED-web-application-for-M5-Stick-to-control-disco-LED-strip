@@ -2066,7 +2066,10 @@ uint32_t paletteColorAt(uint8_t id, uint16_t position) {
     // The 4/8-stop multicolor families use vivid hue transitions instead of
     // RGB mixing, which otherwise makes some combinations look pastel/grey.
     // Explicit neutral/white palettes retain their original authored colors.
-    if (count >= 4 && id != 11) {
+    // Dark, nuanced palettes need RGB interpolation: hue-wheel interpolation
+    // shifts burgundy/teal/brown stops toward dominant purple or blue.
+    const bool nuancedDark = (id==33 || id==34 || id==37 || id==38 || id==40);
+    if (count >= 4 && id != 11 && !nuancedDark) {
         uint16_t h1=vividPaletteHue(from), h2=vividPaletteHue(to);
         int32_t diff=(int32_t)h2-(int32_t)h1;
         if(diff>32768)diff-=65536;
@@ -2104,14 +2107,18 @@ uint32_t saturatedPaletteColor(uint32_t color, uint8_t id) {
     if (!hi) return 0;
     // Preserve authored neutral/white stops. For chromatic stops, boost
     // contrast by reducing the common RGB component, never raising the peak.
-    bool neutral=(id==11 || id==24 || id==30 || id==32);
+    bool nuancedDark=(id==33 || id==34 || id==37 || id==38 || id==40);
+    bool neutral=(id==11 || id==24 || id==30 || id==32 || nuancedDark);
     if(!neutral && hi>lo){
         uint8_t remove=(uint16_t)lo*55/100;
         r-=remove;g-=remove;b-=remove;
     }
     // Approximate perceptual darkening (value^1.5), shared by all palettes.
     // Bright stops remain bright; dark stops remain genuinely dark.
-    uint8_t corrected=(uint8_t)((uint32_t)hi*sqrtf((float)hi/255.0f)+0.5f);
+    // Nuanced dark colors retain enough low-level detail to show their
+    // individual stops, while remaining substantially dimmer than neon.
+    float curve=sqrtf((float)hi/255.0f);
+    uint8_t corrected=(uint8_t)((float)hi*(nuancedDark ? (0.35f+0.65f*curve) : curve)+0.5f);
     return strip.Color((uint16_t)r*corrected/hi,
                        (uint16_t)g*corrected/hi,
                        (uint16_t)b*corrected/hi);
@@ -2874,7 +2881,7 @@ h1{font-size:23px;letter-spacing:.04em;margin:0}.sub{font-size:12px;color:#8e9db
 .paletteSwatch i{flex:1;min-width:0}
 .paletteLabel{display:block;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}
 .paletteGroup{margin:9px 0}.paletteGroup h3{font-size:12px;margin:0 0 4px}
-.pad .hint{display:none!important}.paletteHelp{color:#a9b9d4;font-size:11px;margin:6px 0}#paletteView .settingsTop{margin-bottom:6px}#paletteView .settingsTop h2{font-size:18px}#paletteView{padding-bottom:8px}
+.pad .hint{display:block!important}.paletteHelp{color:#a9b9d4;font-size:11px;margin:6px 0}#paletteView .settingsTop{margin-bottom:6px}#paletteView .settingsTop h2{font-size:18px}#paletteView{padding-bottom:8px}
 
 #settingsView{padding:4px 2px 30px}
 .settingsTop{display:flex;align-items:center;gap:16px;margin-bottom:16px}
