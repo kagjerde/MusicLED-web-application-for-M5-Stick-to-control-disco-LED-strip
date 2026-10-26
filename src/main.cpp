@@ -3272,6 +3272,34 @@ void beginWiFi() {
         if (setupAPActive) showSetupPage();
         else { webServer.sendHeader("Location", "/", true); webServer.send(302, "text/plain", ""); }
     });
+    webServer.on("/api/rgb-test", HTTP_POST, []() {
+        if(setupAPActive){webServer.send(403,"text/plain","Setup mode");return;}
+        if(!webServer.hasArg("enabled")){webServer.send(400,"text/plain","Missing enabled");return;}
+        String enabled=webServer.arg("enabled");
+        if(enabled!="0" && enabled!="1"){webServer.send(400,"text/plain","Invalid enabled");return;}
+        uint32_t colors[3]={};
+        if(enabled=="1"){
+            if(!webServer.hasArg("values")){webServer.send(400,"text/plain","Missing values");return;}
+            String v=webServer.arg("values");
+            int from=0;
+            for(int k=0;k<9;k++){
+                int comma=v.indexOf(',',from);
+                if((k<8 && comma<0)||(k==8 && comma>=0)){webServer.send(400,"text/plain","Need 9 values");return;}
+                String part=comma<0?v.substring(from):v.substring(from,comma);
+                if(part.length()==0||part.length()>3){webServer.send(400,"text/plain","Invalid RGB");return;}
+                for(unsigned j=0;j<part.length();j++)if(!isDigit(part[j])){webServer.send(400,"text/plain","Invalid RGB");return;}
+                int n=part.toInt();
+                if(n>255){webServer.send(400,"text/plain","RGB out of range");return;}
+                colors[k/3]|=(uint32_t)n << (16-8*(k%3));
+                from=comma+1;
+            }
+        }
+        portENTER_CRITICAL(&ledMux);
+        if(enabled=="1")for(int i=0;i<3;i++)rgbTestColors[i]=colors[i];
+        rgbTestEnabled=enabled=="1";
+        portEXIT_CRITICAL(&ledMux);
+        webServer.send(200,"text/plain","OK");
+    });
     webServer.on("/api/settings", HTTP_GET, []() {
         String json = String("{\"dynamics\":") + String((int)dynamicsPercent) +
             ",\"brightness\":" + String((int)currentBrightness) +
