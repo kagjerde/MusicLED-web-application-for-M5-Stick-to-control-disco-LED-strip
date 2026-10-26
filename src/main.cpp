@@ -403,6 +403,15 @@ void particleAdd(int i,uint32_t color){
  uint8_t b=min(255,(int)(old&255)+(int)(color&255));
  strip.setPixelColor(i,strip.Color(r,g,b));
 }
+// Keep the brightest palette fragment at a pixel rather than adding RGB
+// channels from overlapping fragments (which creates unwanted white).
+void particlePaintExclusive(int i,uint32_t color){
+ if(i<0||i>=NUM_LEDS)return;
+ uint32_t old=strip.getPixelColor(i);
+ uint8_t oldMax=max((int)((old>>16)&255),max((int)((old>>8)&255),(int)(old&255)));
+ uint8_t newMax=max((int)((color>>16)&255),max((int)((color>>8)&255),(int)(color&255)));
+ if(newMax>=oldMax)strip.setPixelColor(i,color);
+}
 void particleSpawn(float pos,float vel,float life,uint8_t type,uint16_t hue){
  Particle &p=particles[particleNext++%24];
  p={pos,vel,life,millis(),type,hue,true};
@@ -454,8 +463,8 @@ void updateParticles(){
  if(particleVariant==5 && rocketActive){
    particleRocket+=particleRocketVel*dt;particleRocketVel-=55.0f*dt;
    int head=(int)roundf(particleRocket);
-   particleAdd(head,strip.Color(255,255,255));
-   particleAdd(head-1,strip.Color(80,80,80));
+   particlePaintExclusive(head,fireworkFragmentColor(particleRocketHue,255));
+   particlePaintExclusive(head-1,fireworkFragmentColor(particleRocketHue,80));
    if(particleRocketVel<=0 || particleRocket>=NUM_LEDS-2){
      rocketActive=false;
      // The explosion happens after launch, not necessarily on the next beat.
@@ -478,9 +487,9 @@ void updateParticles(){
      float fade=max(0.0f,1.0f-age/(p.type==0?0.85f:1.45f));
      if(fade<=0){p.active=false;continue;}
      if(p.type==0){
-       for(int side=-1;side<=1;side+=2)for(int w=-2;w<=2;w++){
+       for(int side=-1;side<=1;side+=2)for(int w=-3;w<=3;w++){
          int idx=(int)roundf(p.pos+side*radius+w);
-         float edge=1.0f-abs(w)*.27f;
+         float edge=1.0f-abs(w)*.21f;
          particleAdd(idx,particleRGB(p.hue,(uint8_t)(235*fade*edge)));
        }
      }else{
@@ -512,13 +521,13 @@ void updateParticles(){
        p.life-=dt*(0.72f-0.20f*fireworkPower);
        if(p.life<=0){p.active=false;continue;}
      }
-     uint8_t v=(uint8_t)(255*(p.type==4?1.0f:p.life));
-     particleAdd((int)roundf(p.pos),p.type==5?fireworkFragmentColor(p.hue,v):particleRGB(p.hue,v));
+     uint8_t v=(uint8_t)(255.0f*(p.type==4?1.0f:constrain(p.life,0.0f,1.0f)));
      if(p.type==5){
+       particlePaintExclusive((int)roundf(p.pos),fireworkFragmentColor(p.hue,v));
        int tail=(int)roundf(p.pos-p.vel*.03f);
-       particleAdd(tail,fireworkFragmentColor(p.hue,v/2));
-       particleAdd((int)roundf(p.pos-p.vel*.06f),fireworkFragmentColor(p.hue,v/4));
-     }
+       particlePaintExclusive(tail,fireworkFragmentColor(p.hue,v/2));
+       particlePaintExclusive((int)roundf(p.pos-p.vel*.06f),fireworkFragmentColor(p.hue,v/4));
+     }else particleAdd((int)roundf(p.pos),particleRGB(p.hue,v));
    }
  }
 }
@@ -1585,6 +1594,20 @@ void updateRainbow() {
             vu * 210
         );
 
+    // Palette Wave uses the exact original animated hue phase and audio
+    // brightness; only the color source changes.
+    uint8_t wavePalette=activePalette(RAINBOW_MUSIC);
+    if(wavePalette){
+        for(int i=0;i<NUM_LEDS;i++){
+            uint16_t phase=(uint16_t)(rainbowPhase*256.0f+(uint32_t)i*65536UL/NUM_LEDS);
+            uint16_t position=(uint32_t)phase*(NUM_LEDS-1)/65535UL;
+            if(paletteReverse[RAINBOW_MUSIC])position=NUM_LEDS-1-position;
+            uint32_t color=saturatedPaletteColor(paletteColorAt(wavePalette,position),wavePalette);
+            strip.setPixelColor(i,strip.Color(((color>>16)&255)*brightness/255,
+                ((color>>8)&255)*brightness/255,(color&255)*brightness/255));
+        }
+        return;
+    }
     for (
         int i = 0;
         i < NUM_LEDS;
@@ -1661,7 +1684,11 @@ void updateWaveRunners() {
             int position=(dir>0 ? head-tail : (int)NUM_LEDS-1-head+tail);
             if(position<0 || position>=NUM_LEDS)continue;
             uint8_t level=tail<2 ? 255 : (uint8_t)(210-(tail-2)*45);
-            uint32_t base=waveColor==5 ? strip.gamma32(strip.ColorHSV((uint16_t)((uint32_t)position*65535/NUM_LEDS))) :
+            uint8_t wavePalette=activePalette(RAINBOW_MUSIC);
+            uint16_t palettePosition=waveDirections[k]>0 ? (uint16_t)position : (uint16_t)(NUM_LEDS-1-position);
+            if(paletteReverse[RAINBOW_MUSIC])palettePosition=NUM_LEDS-1-palettePosition;
+            uint32_t base=wavePalette ? saturatedPaletteColor(paletteColorAt(wavePalette,palettePosition),wavePalette) :
+                waveColor==5 ? strip.gamma32(strip.ColorHSV((uint16_t)((uint32_t)position*65535/NUM_LEDS))) :
                 waveColor==0 ? (position < NUM_LEDS*0.5f ? strip.Color(0,255,0) : position < NUM_LEDS*0.7f ? strip.Color(255,200,0) : strip.Color(255,0,0)) :
                 waveColor==1 ? strip.Color(0,100,255) :
                 waveColor==2 ? strip.Color(255,0,0) :
@@ -1913,7 +1940,7 @@ uint32_t saturatedPaletteColor(uint32_t color, uint8_t id) {
     return strip.Color(r-remove,g-remove,b-remove);
 }
 void applyPaletteFrame(LedMode effect) {
-    if (effect == ENERGY_STROBE) return; // Always white.
+    if (effect == ENERGY_STROBE || effect == RAINBOW_MUSIC) return; // Wave renders palettes in its own animated renderer.
     if (effect == COMET_BEAT && particleVariant == 5) return; // Firework fragments use individual palette-stop colors.
     uint8_t id = activePalette((uint8_t)effect);
     if (!id || id > 32) return; // DEFAULT retains original effect colors.
@@ -1947,6 +1974,31 @@ void applyPaletteFrame(LedMode effect) {
     }
 }
 
+// Draw VU peak last, at full selected LED brightness, using the palette's
+// final stop (or first stop when reversed), without palette attenuation.
+void drawVUPeakDot(){
+    if(vuPeak<=0.01f)return;
+    uint8_t id=activePalette(VU_METER);
+    uint32_t color;
+    if(id){
+        uint16_t end=paletteReverse[VU_METER]?0:NUM_LEDS-1;
+        color=saturatedPaletteColor(paletteColorAt(id,end),id);
+    }else color=vuColorAt(NUM_LEDS-1);
+    uint8_t r=(color>>16)&255,g=(color>>8)&255,b=color&255;
+    uint8_t maximum=max((int)r,max((int)g,(int)b));
+    if(maximum==0)return;
+    color=strip.Color((uint16_t)r*255/maximum,(uint16_t)g*255/maximum,(uint16_t)b*255/maximum);
+    float displayPeak=expandVU(vuPeak);
+    if(vuCentered){
+        int half=NUM_LEDS/2;
+        int peak=constrain((int)(displayPeak*half),0,half-1);
+        strip.setPixelColor(half-1-peak,color);
+        if(half+peak<NUM_LEDS)strip.setPixelColor(half+peak,color);
+    }else{
+        int peak=constrain((int)(displayPeak*(NUM_LEDS-1)),0,NUM_LEDS-1);
+        strip.setPixelColor(peak,color);
+    }
+}
 void ledTask(void* parameter) {
     LedMode previousMode = RAINBOW_MUSIC;
 
@@ -2119,6 +2171,7 @@ void ledTask(void* parameter) {
                 }
 
                 applyPaletteFrame(currentMode);
+                if(currentMode==VU_METER)drawVUPeakDot();
                 strip.show();
             }
         }
