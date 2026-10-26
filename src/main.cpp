@@ -1678,18 +1678,18 @@ void updateRainbow() {
             vu * 210
         );
 
-    // TEMPORARY RGB CHANNEL DIAGNOSTIC for Wave Standard + Midnight Petrol.
-    // Three stationary equal-length zones: RED, GREEN, BLUE.
-    // Equal channel values (64) make channel/order issues easy to spot.
-    // No palette interpolation, audio scaling or color correction.
+    // TEMPORARY PETROL COLOR DIAGNOSTIC for Wave Standard + Midnight Petrol.
+    // Three stationary equal-length zones with exact authored palette RGB.
+    // No interpolation, audio scaling, saturation or brightness curve.
+    // LED 0 is at the bottom: blue petrol, turquoise petrol, green petrol.
     // All other palettes and Wave variants are unchanged.
     uint8_t wavePalette=activePalette(RAINBOW_MUSIC);
     if(waveVariant==0 && wavePalette==33){
         for(int i=0;i<NUM_LEDS;i++){
             uint8_t zone=(uint32_t)i*3/NUM_LEDS;
-            uint32_t testColor=zone==0 ? strip.Color(64,0,0) :
-                               zone==1 ? strip.Color(0,64,0) :
-                                         strip.Color(0,0,64);
+            uint32_t testColor=zone==0 ? strip.Color(18,60,80) :
+                               zone==1 ? strip.Color(23,87,91) :
+                                         strip.Color(40,105,94);
             strip.setPixelColor(i,testColor);
         }
         return;
