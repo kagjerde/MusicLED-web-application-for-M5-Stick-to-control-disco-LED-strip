@@ -1678,9 +1678,21 @@ void updateRainbow() {
             vu * 210
         );
 
+    // TEMPORARY DIAGNOSTIC: Wave Standard with Midnight Petrol (palette 33)
+    // shows the eight exact palette stops as stationary equal-width blocks.
+    // No music scaling, interpolation, saturation or brightness curve.
+    // Other Wave palettes and variants remain unchanged.
+    uint8_t wavePalette=activePalette(RAINBOW_MUSIC);
+    if(waveVariant==0 && wavePalette==33){
+        for(int i=0;i<NUM_LEDS;i++){
+            uint8_t stop=(uint32_t)i*8/NUM_LEDS;
+            if(paletteReverse[RAINBOW_MUSIC])stop=7-stop;
+            strip.setPixelColor(i,paletteStopColor(33,stop));
+        }
+        return;
+    }
     // Palette Wave uses the exact original animated hue phase and audio
     // brightness; only the color source changes.
-    uint8_t wavePalette=activePalette(RAINBOW_MUSIC);
     if(wavePalette){
         for(int i=0;i<NUM_LEDS;i++){
             uint16_t phase=(uint16_t)(rainbowPhase*256.0f+(uint32_t)i*65536UL/NUM_LEDS);
