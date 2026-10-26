@@ -284,7 +284,7 @@ const float BPM_MAX_INTERVAL_MS =
     60000.0f / BPM_MIN;
 
 // Detection
-const float BPM_BASS_MIN_HZ = 50.0f;
+const float BPM_BASS_MIN_HZ = 35.0f;
 const float BPM_BASS_MAX_HZ = 250.0f;
 
 const float BPM_NOISE_GATE = 0.018f;
@@ -439,6 +439,16 @@ void updateParticles(){
  strip.clear();
  uint32_t beatSource=(particleVariant==0||particleVariant==1||particleVariant==5) ? particleOnsetCount : bpmFlashCount;
  uint32_t beats=beatSource-particleBeat;particleBeat=beatSource;
+ // Deep sustained bass can mask local peaks while the BPM clock remains locked.
+ // Use the clock only as a fallback, never as an extra hit beside a raw onset.
+ static uint32_t lastRawHitAt=0, lastClockSeen=0;
+ if (particleVariant==0||particleVariant==1||particleVariant==5) {
+   if (beats>0) lastRawHitAt=now;
+   uint32_t clockBeats=bpmFlashCount-lastClockSeen;
+   lastClockSeen=bpmFlashCount;
+   if (beats==0 && clockBeats>0 && audioIsActive &&
+       (manualBPM || bpmLocked) && now-lastRawHitAt>320) beats=1;
+ } else lastClockSeen=bpmFlashCount;
  if(beats>3)beats=3;
  bool beat=beats>0 && audioIsActive;
  if(beat){
@@ -1417,8 +1427,8 @@ void analyzeAudio() {
         mode == VU_METER
     ) {
         updateAGC(rms, dt);
-        // Palette selection stays fixed; legacy VU auto-color cycling is disabled.
-        return;
+        // Keep FFT/bass analysis running even for VU and standard Wave.
+        // Random must never starve the shared onset detector.
     }
 
     FFT.windowing(
@@ -1509,11 +1519,7 @@ void analyzeAudio() {
             }
         }
 
-        if (
-            (mode == BPM_AUTO || mode == COMET_BEAT || (mode == RAINBOW_MUSIC && waveVariant != 0)) &&
-            freq >= BPM_BASS_MIN_HZ &&
-            freq < BPM_BASS_MAX_HZ
-        ) {
+        if (freq >= BPM_BASS_MIN_HZ && freq < BPM_BASS_MAX_HZ) {
             bassPower += power;
             bassBins++;
         }
@@ -1598,10 +1604,7 @@ void analyzeAudio() {
 
     // BPM AUTO:
     // dedicated bass detector
-    if (
-        (mode == BPM_AUTO || mode == COMET_BEAT || (mode == RAINBOW_MUSIC && waveVariant != 0)) &&
-        bassBins > 0
-    ) {
+    if (bassBins > 0) {
         float bassMagnitude =
             sqrt(
                 bassPower / bassBins
@@ -1881,12 +1884,13 @@ void drawFireGlitter() {
     uint32_t newBeats = bassNow - lastBassOnset;
     lastBassOnset = bassNow;
     if (newBeats > 3) newBeats = 3;
-    const int count = (random(1000) < (int)(65 + 300 * activity)) ? 1 : 0;
-    const int burst = audioIsActive ? (int)newBeats * 3 : 0;
+    // No continuous random glitter: most sparkles follow detected bass attacks.
+    const int count = (audioIsActive && newBeats>0 && random(100)<(int)(35+40*activity)) ? 1 : 0;
+    const int burst = audioIsActive ? (int)newBeats * (activity>0.5f ? 2 : 1) : 0;
     for (int j = 0; j < count + burst; ++j) {
         int i = random(NUM_LEDS);
         born[i] = now ? now : 1;
-        lifetime[i] = random(800, 1201);
+        lifetime[i] = random(500, 851);
     }
     for (int i = 0; i < NUM_LEDS; ++i) {
         if (!born[i]) continue;
@@ -2019,8 +2023,8 @@ void applyPaletteFrame(LedMode effect) {
         uint8_t r=(old>>16)&255, g=(old>>8)&255, b=old&255;
         uint8_t intensity = max(r,max(g,b));
         if (!intensity) continue;
-        // Square the effect envelope: dark levels remain dark, peaks reach full color.
-        const uint16_t level = ((uint32_t)intensity*intensity + 127) / 255;
+        // Palette changes hue only: retain the effect's original brightness envelope.
+        const uint16_t level = intensity;
         // Center-origin effects use a mirrored palette: center is stop 0,
 // both ends are the last stop. Reverse swaps center and ends.
         const bool centerOrigin =
@@ -2167,15 +2171,13 @@ void ledTask(void* parameter) {
 
             portEXIT_CRITICAL(&ledMux);
 
-            if (currentMode == BPM_AUTO && bpmDisplayVariant == 1 && bpmFlashCount > 0) {
+            if (currentMode == BPM_AUTO && bpmDisplayVariant == 1 && audioIsActive) {
                 shouldBeOn = true;
             }
-            if (currentMode == BPM_AUTO && bpmColorVariant != 0 && bpmFlashCount > 0 && activePalette(BPM_AUTO)==0) {
-                shouldBeOn = true;  // hold last red/blue or rainbow color in silence
-            }
+
             static uint32_t lastShownBeat = 0;
             static uint8_t lastShownVariant = 255;
-            bool colorChanged = (currentMode == BPM_AUTO && (bpmDisplayVariant==1 || bpmColorVariant != 0) &&
+            bool colorChanged = (currentMode == BPM_AUTO && bpmDisplayVariant==1 &&
                 (lastShownBeat != bpmFlashCount || lastShownVariant != bpmColorVariant));
             static uint8_t lastDisplayVariant=255;
             bool displayChanged=lastDisplayVariant!=bpmDisplayVariant;
@@ -2193,19 +2195,7 @@ void ledTask(void* parameter) {
                         i < NUM_LEDS;
                         i++
                     ) {
-                        strip.setPixelColor(
-                            i,
-                            strip.Color(
-                                (currentMode == BPM_AUTO && bpmColorVariant == 1 && (bpmFlashCount % 2 == 0)) ? 255 :
-                                (currentMode == BPM_AUTO && bpmColorVariant == 1) ? 0 :
-                                (currentMode == BPM_AUTO && bpmColorVariant == 2) ? (uint8_t)(strip.gamma32(strip.ColorHSV((uint16_t)((bpmFlashCount * 10923UL) & 65535))) >> 16) : 255,
-                                (currentMode == BPM_AUTO && bpmColorVariant == 1) ? 0 :
-                                (currentMode == BPM_AUTO && bpmColorVariant == 2) ? (uint8_t)(strip.gamma32(strip.ColorHSV((uint16_t)((bpmFlashCount * 10923UL) & 65535))) >> 8) : 255,
-                                (currentMode == BPM_AUTO && bpmColorVariant == 1 && (bpmFlashCount % 2 == 1)) ? 255 :
-                                (currentMode == BPM_AUTO && bpmColorVariant == 1) ? 0 :
-                                (currentMode == BPM_AUTO && bpmColorVariant == 2) ? (uint8_t)strip.gamma32(strip.ColorHSV((uint16_t)((bpmFlashCount * 10923UL) & 65535))) : 255
-                            )
-                        );
+                        strip.setPixelColor(i, strip.Color(255,255,255));
                     }
                 }
 
@@ -2658,8 +2648,7 @@ static void selectRandomEffect() {
         nextMode = random(0, 6);
         sub = nextMode == 0 ? random(0, 4) : nextMode == 1 ? random(0, 2) :
               nextMode == 2 ? random(0, 6) : nextMode == 4 ? random(1, 5) : 0;
-        color = nextMode == 0 || nextMode == 1 || nextMode == 2 ? random(0, 6) :
-                nextMode == 3 ? random(0, 3) : 0;
+        color = nextMode == 0 || nextMode == 1 || nextMode == 2 ? random(0, 6) : 0;
         key = nextMode * 100 + sub * 10 + color;
     } while (key == randomPreviousKey);
     randomPreviousKey = key;
@@ -2671,9 +2660,11 @@ static void selectRandomEffect() {
         static const VUColorMode vuPalette[6] = {VU_CLASSIC,VU_BLUE,VU_RED,VU_PURPLE,VU_GOLD,VU_RAINBOW};
         vuColorMode = vuPalette[color];
     } else if (nextMode == COMET_BEAT) {
-        particleVariant = sub; particleColor = color; resetParticles();
+        particleVariant = sub;
+        if (activePalette(COMET_BEAT)==0) particleColor = color;
+        resetParticles();
     } else if (nextMode == BPM_AUTO) {
-        bpmColorVariant = color;
+        // Random keeps the user's Flash/Solid choice and palette.
     } else if (nextMode == ENERGY_STROBE) {
         energyFlashVariant = sub;
     }
@@ -2836,7 +2827,7 @@ const vuColors=['CLASSIC','BLUE','RED','PURPLE','GOLD','RAINBOW'];
 const particleColors=['CLASSIC','BLUE','RED','PURPLE','GOLD','RAINBOW'];
 const particleVariants=['BASS EXPLOSION','DIFFUSION','BREATHE','STREAMER','BOUNCING BALLS','FIREWORKS'];
 let particleStyle=0;
-const bpmColors=['WHITE','RED / BLUE','RAINBOW'];
+const bpmStyles=['FLASH','SOLID'];
 let bpmColorIndex=)HTML");
     h += String((int)bpmColorVariant);
     h += F(R"HTML(;
@@ -2856,7 +2847,7 @@ let particleIndex=)HTML");
 let bpmStyle=0;
 let randomEnabled=false;
 function showRandom(enabled){randomEnabled=enabled;const b=document.getElementById('randomBtn');b.classList.toggle('on',enabled);b.setAttribute('aria-pressed',String(enabled));}
-async function syncRandom(){try{const r=await fetch('/api/random-state',{cache:'no-store'});if(!r.ok)return;const d=await r.json();showRandom(d.enabled);highlight(d.mode);waveStyle=d.waveVariant;waveIndex=d.waveColor;vuStyle=d.vuCentered?1:0;vuIndex=d.vuColor;particleStyle=d.particleVariant;particleIndex=d.particleColor;bpmColorIndex=d.bpmColor;energyCount=d.energyFlashes;updateVUHint();updateWaveHint();updateParticleHint();document.querySelector('[data-mode="3"] .hint').textContent=bpmColors[bpmColorIndex];document.querySelector('[data-mode="4"] .hint').textContent=energyCount+' FLASH'+(energyCount===1?'':'ES');}catch(e){}}
+async function syncRandom(){try{const r=await fetch('/api/random-state',{cache:'no-store'});if(!r.ok)return;const d=await r.json();showRandom(d.enabled);highlight(d.mode);waveStyle=d.waveVariant;waveIndex=d.waveColor;vuStyle=d.vuCentered?1:0;vuIndex=d.vuColor;particleStyle=d.particleVariant;particleIndex=d.particleColor;bpmStyle=d.bpmDisplayVariant;energyCount=d.energyFlashes;updateVUHint();updateWaveHint();updateParticleHint();document.querySelector('[data-mode="3"] .hint').textContent=bpmStyles[bpmStyle];document.querySelector('[data-mode="4"] .hint').textContent=energyCount+' FLASH'+(energyCount===1?'':'ES');}catch(e){}}
 async function randomPress(){try{const r=await fetch('/api/random-next',{cache:'no-store'});if(r.ok)await syncRandom();}catch(e){}}
 function showSettings(){
  document.getElementById('homeBpm').hidden=true;
@@ -3020,12 +3011,12 @@ async function choose(n){try{
    else if(n===4)energyCount=energyCount%4+1;
  }
  highlight(n);updateVUHint();updateWaveHint();updateParticleHint();
- document.querySelector('[data-mode="3"] .hint').textContent=bpmColors[bpmColorIndex];
+ document.querySelector('[data-mode="3"] .hint').textContent=bpmStyles[bpmStyle];
  document.querySelector('[data-mode="4"] .hint').textContent=energyCount+' FLASH'+(energyCount===1?'':'ES');
  document.querySelector('[data-mode="5"] .hint').textContent='FIRE & SPARKS';
 }catch(e){console.warn('Ingen kontakt med MusicLED',e);}}
 highlight(active);updateVUHint();updateWaveHint();updateParticleHint();
-document.querySelector('[data-mode="3"] .hint').textContent=bpmColors[bpmColorIndex];
+document.querySelector('[data-mode="3"] .hint').textContent=bpmStyles[bpmStyle];
 document.querySelector('[data-mode="4"] .hint').textContent=energyCount+' FLASH'+(energyCount===1?'':'ES');
 document.querySelector('[data-mode="5"] .hint').textContent='FIRE & SPARKS';
 async function refreshBPM(){try{const r=await fetch('/api/bpm',{cache:'no-store'});if(!r.ok)return;const d=await r.json();document.getElementById('bpmDisplay').textContent=d.bpm>0?Math.round(d.bpm)+' BPM':'-- BPM';document.getElementById('bpmSource').textContent=d.manual?'MANUAL':'AUTO';document.getElementById('tapBpm').textContent=d.bpm>0?Math.round(d.bpm)+' BPM':'-- BPM';}catch(e){}}
@@ -3240,6 +3231,7 @@ void beginWiFi() {
             ",\"particleVariant\":" + String((int)particleVariant) +
             ",\"particleColor\":" + String((int)particleColor) +
             ",\"bpmColor\":" + String((int)bpmColorVariant) +
+            ",\"bpmDisplayVariant\":" + String((int)bpmDisplayVariant) +
             ",\"energyFlashes\":" + String((int)energyFlashVariant) + "}";
         webServer.sendHeader("Cache-Control", "no-store");
         webServer.send(200, "application/json", json);
