@@ -502,7 +502,7 @@ void updateParticles(){
          const uint16_t hue=(uint16_t)(rocket.hue+random(65536));
          particleSpawn(origin,-velocity,life,5,hue);
          Particle &left=particles[(particleNext+71)%72];
-         left.fadeRate=0.85f-0.20f*power;
+         left.fadeRate=2.0f*(0.85f-0.20f*power);
          if(k+1<fragments){
            particleSpawn(origin,velocity,life,5,hue);
            Particle &right=particles[(particleNext+71)%72];
