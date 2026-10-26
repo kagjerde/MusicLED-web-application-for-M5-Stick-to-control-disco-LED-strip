@@ -581,11 +581,11 @@ void updateParticles(){
      if(p.type==5){
        // Fragments travel at most 20-30 LEDs from the burst, then disappear.
        const float distance=fabsf(p.pos-p.origin);
-       if(distance>25.0f){p.active=false;continue;}
+       if(distance>12.5f){p.active=false;continue;}
        p.life-=dt*p.fadeRate;
        if(p.life<=0){p.active=false;continue;}
      }
-     float strength=p.type==5 ? constrain(p.life,0.0f,1.0f)*constrain((25.0f-fabsf(p.pos-p.origin))/12.0f,0.0f,1.0f) : 1.0f;
+     float strength=p.type==5 ? constrain(p.life,0.0f,1.0f)*constrain((12.5f-fabsf(p.pos-p.origin))/6.0f,0.0f,1.0f) : 1.0f;
      if(p.type==5 && strength<0.025f){p.active=false;continue;}
      uint8_t v=(uint8_t)(255.0f*strength);
      if(p.type==5){
