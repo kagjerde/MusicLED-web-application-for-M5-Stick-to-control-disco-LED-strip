@@ -370,6 +370,7 @@ struct FireworkRocket {float pos, vel, power; uint16_t hue; bool active;};
 static FireworkRocket fireworkRockets[3] = {};
 static uint32_t fireworkBassSerial=0;
 static uint32_t fireworkLastLaunch=0;
+static uint32_t fireworkRocketCount=0; // Count actual launches, not bass onsets
 uint8_t paletteStopCount(uint8_t id);
 uint32_t paletteStopColor(uint8_t id,uint32_t beat);
 uint32_t paletteColorAt(uint8_t id, uint16_t position);
@@ -489,7 +490,11 @@ void updateParticles(){
          rocket.active=true;rocket.pos=0;
          rocket.power=constrain(vu,0.0f,1.0f);
          rocket.hue=(uint16_t)random(65536);
-         const float height=(NUM_LEDS-1)*(random(25,61)*.01f);
+         // Alternate broad, overlapping height bands: 25–55% and 45–75%.
+         // Their overlap keeps the middle populated while successive rockets spread out.
+         const bool upper=(fireworkRocketCount++ & 1U)!=0;
+         const float heightFraction=(upper?random(45,76):random(25,56))*.01f;
+         const float height=(NUM_LEDS-1)*heightFraction;
          rocket.vel=sqrtf(2.0f*55.0f*height);
          fireworkLastLaunch=now;
          break;
