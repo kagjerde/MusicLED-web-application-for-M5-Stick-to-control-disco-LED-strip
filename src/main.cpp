@@ -2750,7 +2750,7 @@ h1{font-size:23px;letter-spacing:.04em;margin:0}.sub{font-size:12px;color:#8e9db
 .gear{border:1px solid #38455f;background:#202a40;color:white;width:100%;height:52px;border-radius:15px;display:grid;place-items:center;text-decoration:none}
 .gear svg{width:25px;height:25px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 [hidden]{display:none!important}
-.gear{cursor:pointer;touch-action:manipulation}
+.gear{cursor:pointer;touch-action:manipulation}#paletteReverseButton{border:1px solid #38455f;background:#202a40;color:#d9e8ff;min-height:52px;padding:0 16px;border-radius:14px;font:600 12px system-ui;letter-spacing:.03em;cursor:pointer;touch-action:manipulation}#paletteReverseButton:active{background:#174a68}
 .paletteGrid{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:4px}
 .paletteTile{border:2px solid #2366b9;background:#2366b9;color:#fff;border-radius:7px;padding:3px 1px;min-width:0;cursor:pointer;touch-action:manipulation}
 .paletteTile.selected{border-color:#8edcff;box-shadow:0 0 0 2px #8edcff99}
