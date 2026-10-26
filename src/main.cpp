@@ -369,6 +369,7 @@ static bool rocketActive=false;
 static uint16_t particleRocketHue=0;
 uint8_t paletteStopCount(uint8_t id);
 uint32_t paletteStopColor(uint8_t id,uint32_t beat);
+uint32_t paletteColorAt(uint8_t id, uint16_t position);
 uint32_t saturatedPaletteColor(uint32_t color,uint8_t id);
 uint32_t fireworkFragmentColor(uint16_t hue,uint8_t brightness) {
   uint8_t id=activePalette(COMET_BEAT);
