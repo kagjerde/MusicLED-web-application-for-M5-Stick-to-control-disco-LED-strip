@@ -61,6 +61,14 @@ enum LedMode {
 };
 
 volatile LedMode mode = RAINBOW_MUSIC;
+// Palette selection shared by the web and LED tasks. Zero retains original colors.
+volatile uint8_t effectPalette[6] = {0,0,0,0,0,0};
+volatile int8_t temporaryGlobalPalette = -1;
+volatile uint32_t paletteRevision = 0;
+uint8_t activePalette(uint8_t effect) {
+    return temporaryGlobalPalette > 0 ? (uint8_t)temporaryGlobalPalette : effectPalette[effect];
+}
+
 volatile int requestedMode = -1;
 volatile bool requestedColor = false;
 volatile bool requestedWaveColor = false;
@@ -1780,10 +1788,74 @@ void updateFireSparks() {
     }
 }
 
+
+// v2.1 step 2B: apply the selected palette to the finished LED frame.
+// Keep effect algorithms and audio response intact, including their brightness.
+// Palette order matches the web UI (1-4 global; 5-32 saved per effect).
+static const uint32_t paletteColors[32][8] = {
+ {0xff2222,0xffaa00,0xffff00,0x00dd55,0x0099ee,0x6655ff,0xcc00ff,0xff33aa},
+ {0xff00aa,0xffaa00,0x9900ff,0x00ddff,0xff2255,0xffff00,0x00ff99,0xff00aa},
+ {0x001b54,0x0077b6,0x00b4d8,0x90e0ef,0x48cae4,0x023e8a,0x0077b6,0xcaf0f8},
+ {0x123524,0x245c35,0x3e8b46,0x73a942,0xb7d35b,0x276749,0x194d33,0xa0b75e},
+ {0x27104e,0x702b86,0xb33986,0xf25f5c,0xff914d,0xffcf70,0xf76d39,0x38164b},
+ {0x350000,0x9c1600,0xff4000,0xff8c00,0xffe080,0xff5400,0xb32100,0x350000},
+ {0x08213e,0x007c80,0x00bb83,0x8bffba,0x8a53d6,0x1bb1a7,0x3b358e,0x08213e},
+ {0xf22525,0xffb600,0x0ab64a,0x2567ed,0xf22525,0xffb600,0x0ab64a,0x2567ed},
+ {0xff00aa,0x00e5ff,0x9d4edd,0xffee00,0xff00aa,0x00e5ff,0x9d4edd,0xffee00},
+ {0x00d1b2,0xffb703,0xfb5607,0x3a86ff,0x00d1b2,0xffb703,0xfb5607,0x3a86ff},
+ {0x002b7f,0x008cff,0x8ceeff,0xffffff,0x002b7f,0x008cff,0x8ceeff,0xffffff},
+ {0xf9c74f,0xf9844a,0xf94144,0x577590,0xf9c74f,0xf9844a,0xf94144,0x577590},
+ {0xff65b3,0xb388eb,0x66d9e8,0xffe66d,0xff65b3,0xb388eb,0x66d9e8,0xffe66d},
+ {0x8c2f00,0xd65a00,0xffa62b,0xffdf80,0x8c2f00,0xd65a00,0xffa62b,0xffdf80},
+ {0x061a40,0x214e8a,0x6844b8,0xc44dce,0x061a40,0x214e8a,0x6844b8,0xc44dce},
+ {0x9c4637,0xd29b6f,0xe8d8b8,0x647e73,0x9c4637,0xd29b6f,0xe8d8b8,0x647e73},
+ {0x220000,0x620000,0xa50000,0xff3030,0x220000,0x620000,0xa50000,0xff3030},
+ {0x000c35,0x002c80,0x1464d2,0x8bcaff,0x000c35,0x002c80,0x1464d2,0x8bcaff},
+ {0x00200e,0x00662c,0x00b85c,0xa2ffc1,0x00200e,0x00662c,0x00b85c,0xa2ffc1},
+ {0x18002b,0x4c148c,0x9146d8,0xe1b7ff,0x18002b,0x4c148c,0x9146d8,0xe1b7ff},
+ {0x321000,0x8c3900,0xe98100,0xffe29b,0x321000,0x8c3900,0xe98100,0xffe29b},
+ {0x002b32,0x006b80,0x00b9d0,0xa4f7ff,0x002b32,0x006b80,0x00b9d0,0xa4f7ff},
+ {0x390a27,0x8e195b,0xe5489a,0xffd1e8,0x390a27,0x8e195b,0xe5489a,0xffd1e8},
+ {0x141414,0x525252,0xaaaaaa,0xffffff,0x141414,0x525252,0xaaaaaa,0xffffff},
+ {0xff2435,0xff2435,0xff2435,0xff2435,0x176bff,0x176bff,0x176bff,0x176bff},
+ {0x176bff,0x176bff,0x176bff,0x176bff,0xffc22b,0xffc22b,0xffc22b,0xffc22b},
+ {0xff30b4,0xff30b4,0xff30b4,0xff30b4,0x00dbeb,0x00dbeb,0x00dbeb,0x00dbeb},
+ {0x8b45e8,0x8b45e8,0x8b45e8,0x8b45e8,0x30dc79,0x30dc79,0x30dc79,0x30dc79},
+ {0xff8a28,0xff8a28,0xff8a28,0xff8a28,0x00a6a6,0x00a6a6,0x00a6a6,0x00a6a6},
+ {0xf5222d,0xf5222d,0xf5222d,0xf5222d,0xffffff,0xffffff,0xffffff,0xffffff},
+ {0xffd046,0xffd046,0xffd046,0xffd046,0x7029bd,0x7029bd,0x7029bd,0x7029bd},
+ {0x2469e8,0x2469e8,0x2469e8,0x2469e8,0xffffff,0xffffff,0xffffff,0xffffff}
+};
+uint32_t paletteColorAt(uint8_t id, uint16_t position, uint32_t beat) {
+    const uint32_t* colors=paletteColors[id-1];
+    uint8_t idx;
+    if (id>=25) idx=(beat + position/12)%2 ? 4 : 0; // alternate dual colors, not fixed strip halves
+    else if (id>=17 && id<=24) idx=7; // mono: strongest shade only; no variant-specific default
+    else idx=(uint8_t)((position*8UL/max(1,(int)NUM_LEDS) + beat)%8);
+    return colors[idx];
+}
+void applyPaletteFrame(LedMode effect) {
+    if (effect==ENERGY_STROBE) return; // Energy is always white.
+    uint8_t id=activePalette((uint8_t)effect);
+    if (!id || id>32) return;
+    for (uint16_t i=0;i<NUM_LEDS;i++) {
+        uint32_t old=strip.getPixelColor(i);
+        uint8_t r=(old>>16)&255,g=(old>>8)&255,b=old&255;
+        uint8_t intensity=max(r,max(g,b));
+        if (!intensity) continue;
+        uint32_t c;
+        if (effect==VU_METER && id==0) c=old;
+        else if (effect==VU_METER && id==8) c=(i<NUM_LEDS/2 ? 0x00ff00 : i<NUM_LEDS*3/4 ? 0xffff00 : 0xff0000);
+        else c=paletteColorAt(id,i,bpmFlashCount);
+        strip.setPixelColor(i,strip.Color(((c>>16)&255)*intensity/255,((c>>8)&255)*intensity/255,(c&255)*intensity/255));
+    }
+}
+
 void ledTask(void* parameter) {
     LedMode previousMode = RAINBOW_MUSIC;
 
     bool outputOn = false;
+    uint32_t lastPaletteRevision = paletteRevision;
 
     uint32_t lastNormalLED = 0;
 
@@ -1793,6 +1865,8 @@ void ledTask(void* parameter) {
             strip.setBrightness(currentBrightness);
         }
         LedMode currentMode = mode;
+        bool paletteChanged=(lastPaletteRevision!=paletteRevision);
+        if (paletteChanged) lastPaletteRevision=paletteRevision;
 
         if (currentMode != previousMode) {
             strip.clear();
@@ -1878,7 +1952,7 @@ void ledTask(void* parameter) {
             static uint8_t lastShownVariant = 255;
             bool colorChanged = (currentMode == BPM_AUTO && bpmColorVariant != 0 &&
                 (lastShownBeat != bpmFlashCount || lastShownVariant != bpmColorVariant));
-            if (shouldBeOn != outputOn || colorChanged) {
+            if (shouldBeOn != outputOn || colorChanged || paletteChanged) {
                 outputOn = shouldBeOn;
                 lastShownBeat = bpmFlashCount;
                 lastShownVariant = bpmColorVariant;
@@ -1907,6 +1981,7 @@ void ledTask(void* parameter) {
                     }
                 }
 
+                applyPaletteFrame(currentMode);
                 strip.show();
             }
         }
@@ -1937,6 +2012,7 @@ void ledTask(void* parameter) {
                     updateParticles();
                 }
 
+                applyPaletteFrame(currentMode);
                 strip.show();
             }
         }
@@ -2323,9 +2399,7 @@ DNSServer dnsServer;
 Preferences wifiPreferences;
 Preferences ledPreferences;
 Preferences palettePreferences;
-// v2.1 step 2A: palette selections only; LED rendering remains unchanged.
-uint8_t effectPalette[6] = {0,0,0,0,0,0}; // 0 = DEFAULT, 5..32 = stored palette
-int8_t temporaryGlobalPalette = -1; // -1 = off; 1..4 = temporary global override
+// Palette selections are declared above the LED task.
 
 
 const char* SETUP_SSID = "MusicLED-Setup";
@@ -2830,6 +2904,7 @@ void beginWiFi() {
             String key="effect"+String(modeId);
             palettePreferences.putUChar(key.c_str(),(uint8_t)paletteId);
         }
+        paletteRevision++;
         webServer.send(200,"text/plain","OK");
     });
     webServer.on("/api/led-config", HTTP_POST, []() {
