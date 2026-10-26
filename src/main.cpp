@@ -1965,12 +1965,12 @@ static const uint32_t palettes8[][8] = {
     {0x27104e, 0x702b86, 0xb33986, 0xf25f5c, 0xff914d, 0xffcf70, 0xf76d39, 0x38164b}, // 5
     {0x350000, 0x9c1600, 0xff4000, 0xff8c00, 0xffe080, 0xff5400, 0xb32100, 0x350000}, // 6
     {0x08213e, 0x007c80, 0x00bb83, 0x8bffba, 0x8a53d6, 0x1bb1a7, 0x3b358e, 0x08213e}, // 7
-    {0x071b2d,0x123c50,0x17575b,0x28695e,0x193d52,0x142a43,0x0a2236,0x071b2d}, // 33 Midnight Petrol (temporary)
-    {0x260b23,0x4a1938,0x6a304b,0x67402b,0x42283e,0x2b1737,0x35102a,0x260b23}, // 34 Velvet Lounge (temporary)
+    {0x000002,0x000302,0x000502,0x000801,0x000602,0x000403,0x000103,0x000002}, // 33 Midnight Petrol (temporary)
+    {0x050001,0x060002,0x060006,0x040201,0x050202,0x050004,0x040001,0x050001}, // 34 Velvet Lounge (temporary)
     {0x073e55,0x087f83,0x1aa89a,0xc7444e,0xe16d51,0xa93555,0x265b80,0x073e55}, // 35 Teal / Coral (temporary)
     {0x102a8c,0x244bd0,0x4a64db,0xd16a19,0xe38a27,0xb64a24,0x33449b,0x102a8c}, // 36 Cobalt / Copper (temporary)
-    {0x120c24,0x35224d,0x57335e,0x66415b,0x332f56,0x1a2441,0x281532,0x120c24}, // 37 Plum Night
-    {0x071e25,0x164048,0x275954,0x71613d,0x59472c,0x23434a,0x112e3a,0x071e25}, // 38 Deep Brass
+    {0x020003,0x040005,0x060006,0x060307,0x030205,0x010203,0x030104,0x020003}, // 37 Plum Night
+    {0x000202,0x000403,0x000602,0x040301,0x050301,0x010503,0x000303,0x000202}, // 38 Deep Brass
     {0x172e8b,0x3259b4,0x548ac4,0xbb593e,0xd08043,0x9b3d55,0x3a4d9e,0x172e8b}, // 39 Indigo / Terracotta
     {0x174b4a,0x2b7e69,0x47977a,0x9e3563,0xbd4973,0x7a3c77,0x245a67,0x174b4a}, // 40 Jade / Berry
 };
@@ -2928,15 +2928,15 @@ h1{font-size:23px;letter-spacing:.04em;margin:0}.sub{font-size:12px;color:#8e9db
 <button class="pad" data-mode="4" onclick="choose(4)"><span class="symbol"><svg viewBox="0 0 64 64"><path d="M36 5 14 35h16l-3 24 23-34H34z"/></svg></span><span class="name">ENERGY</span><span class="hint">STROBE</span></button>
 <button class="pad" data-mode="5" onclick="choose(5)"><span class="symbol"><svg viewBox="0 0 64 64"><path d="M34 5c4 14-6 18-3 27 6-3 9-9 10-14 19 20 15 37-8 40C10 59 8 42 18 29c1 11 7 13 9 13-5-14 0-27 7-37z"/></svg></span><span class="name">FIRE</span><span class="hint">STANDARD</span></button>
 </section>
-<section class="rgbTester">
+<footer class="footer"><button type="button" id="randomBtn" class="randomBtn" onclick="randomPress()" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M4 7h3c5 0 5 10 10 10h3m-3-3 3 3-3 3M4 17h3c2 0 3-2 4-4m2-3c1-2 2-3 4-3h3m-3-3 3 3-3 3"/></svg><span>RANDOM</span></button><button type="button" class="gear" onclick="showPalettes()" aria-label="Fargepaletter" title="Fargepaletter"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.3 16.7 18.8 2.3c.6-.8 1.5-.8 2-.3s.5 1.3-.1 2.1L9.2 18.4Z"/><path d="m6.8 16.4-1.7 1.7c-1.3-.1-2.8.6-3.3 2.1-.3.8-.7 1.3-1.1 1.7 3.2 1 6.3.4 8-2.3l.7-1.4"/><path d="m6.7 15.9 2.9 2.7"/></svg></button><button type="button" class="gear" onclick="showSettings()" aria-label="Innstillinger"><svg viewBox="0 0 24 24"><path d="M10 2h4l.8 2.6 2 .9 2.4-1.2 2.8 2.8-1.2 2.4.9 2L24 12l-2.3 1.5-.9 2 1.2 2.4-2.8 2.8-2.4-1.2-2 .9L14 23h-4l-.8-2.6-2-.9-2.4 1.2L2 17.9l1.2-2.4-.9-2L0 12l2.3-1.5.9-2L2 6.1l2.8-2.8 2.4 1.2 2-.9z" transform="translate(1 1) scale(.91)"/><circle cx="12" cy="12" r="3"/></svg></button></footer></section>
+<section id="paletteView" hidden>
+<header class="settingsTop"><button type="button" onclick="showHome()">← Tilbake</button><h2>Fargepaletter</h2></header>
+<div id="paletteGroups"></div><p class="paletteHelp" id="paletteModeName">Laster gjeldende valg…</p><div id="paletteActions"><button type="button" id="paletteDefaultButton" onclick="savePalette(0)">Default</button><button type="button" id="paletteReverseButton" onclick="togglePaletteReverse()">⇅ Reverser</button></div><p class="paletteHelp" id="paletteStatus"></p><section class="rgbTester">
  <strong>RGB TEST</strong><p>Tre statiske felt på LED-stripen</p>
  <div id="rgbRows"></div>
  <div class="rgbActions"><button type="button" onclick="applyRGBTest()">VIS FARGENE</button><button type="button" onclick="stopRGBTest()">TILBAKE TIL MUSIKK</button></div>
  <div id="rgbTestStatus" aria-live="polite">Testen er av</div>
-</section><footer class="footer"><button type="button" id="randomBtn" class="randomBtn" onclick="randomPress()" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M4 7h3c5 0 5 10 10 10h3m-3-3 3 3-3 3M4 17h3c2 0 3-2 4-4m2-3c1-2 2-3 4-3h3m-3-3 3 3-3 3"/></svg><span>RANDOM</span></button><button type="button" class="gear" onclick="showPalettes()" aria-label="Fargepaletter" title="Fargepaletter"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.3 16.7 18.8 2.3c.6-.8 1.5-.8 2-.3s.5 1.3-.1 2.1L9.2 18.4Z"/><path d="m6.8 16.4-1.7 1.7c-1.3-.1-2.8.6-3.3 2.1-.3.8-.7 1.3-1.1 1.7 3.2 1 6.3.4 8-2.3l.7-1.4"/><path d="m6.7 15.9 2.9 2.7"/></svg></button><button type="button" class="gear" onclick="showSettings()" aria-label="Innstillinger"><svg viewBox="0 0 24 24"><path d="M10 2h4l.8 2.6 2 .9 2.4-1.2 2.8 2.8-1.2 2.4.9 2L24 12l-2.3 1.5-.9 2 1.2 2.4-2.8 2.8-2.4-1.2-2 .9L14 23h-4l-.8-2.6-2-.9-2.4 1.2L2 17.9l1.2-2.4-.9-2L0 12l2.3-1.5.9-2L2 6.1l2.8-2.8 2.4 1.2 2-.9z" transform="translate(1 1) scale(.91)"/><circle cx="12" cy="12" r="3"/></svg></button></footer></section>
-<section id="paletteView" hidden>
-<header class="settingsTop"><button type="button" onclick="showHome()">← Tilbake</button><h2>Fargepaletter</h2></header>
-<div id="paletteGroups"></div><p class="paletteHelp" id="paletteModeName">Laster gjeldende valg…</p><div id="paletteActions"><button type="button" id="paletteDefaultButton" onclick="savePalette(0)">Default</button><button type="button" id="paletteReverseButton" onclick="togglePaletteReverse()">⇅ Reverser</button></div><p class="paletteHelp" id="paletteStatus"></p><p class="paletteHelp">I RANDOM gjelder nye palettvalg alle effekter. Uten RANDOM er de åtte første midlertidige globale valg.</p>
+</section><p class="paletteHelp">I RANDOM gjelder nye palettvalg alle effekter. Uten RANDOM er de åtte første midlertidige globale valg.</p>
 </section>
 <section id="settingsView" hidden>
 <header class="settingsTop"><button type="button" onclick="showHome()">← Tilbake</button><h2>Innstillinger</h2></header>
@@ -3013,8 +3013,8 @@ const paletteGroups=[
  ['Party',['#f0a','#fa0','#90f','#0df','#f25','#ff0','#0f9','#f0a']],
  ['Ocean',['#001b54','#0077b6','#00b4d8','#90e0ef','#48cae4','#023e8a','#0077b6','#caf0f8']],
  ['Forest',['#123524','#245c35','#3e8b46','#73a942','#b7d35b','#276749','#194d33','#a0b75e']],
- ['Midnight Petrol',['#071b2d','#123c50','#17575b','#28695e','#193d52','#142a43','#0a2236','#071b2d']],
- ['Velvet Lounge',['#260b23','#4a1938','#6a304b','#67402b','#42283e','#2b1737','#35102a','#260b23']],
+ ['Midnight Petrol',['#000002','#000302','#000502','#000801','#000602','#000403','#000103','#000002']],
+ ['Velvet Lounge',['#050001','#060002','#060006','#040201','#050202','#050004','#040001','#050001']],
  ['Teal / Coral',['#073e55','#087f83','#1aa89a','#c7444e','#e16d51','#a93555','#265b80','#073e55']],
  ['Cobalt / Copper',['#102a8c','#244bd0','#4a64db','#d16a19','#e38a27','#b64a24','#33449b','#102a8c']]
  ]],
@@ -3023,8 +3023,8 @@ const paletteGroups=[
  ['Lava',['#350000','#9c1600','#ff4000','#ff8c00','#ffe080','#ff5400','#b32100','#350000']],
  ['Aurora',['#08213e','#007c80','#00bb83','#8bffba','#8a53d6','#1bb1a7','#3b358e','#08213e']],
  ['C9',['#f22525','#ffb600','#0ab64a','#2567ed']],
- ['Plum Night',['#120c24','#35224d','#57335e','#66415b','#332f56','#1a2441','#281532','#120c24']],
- ['Deep Brass',['#071e25','#164048','#275954','#71613d','#59472c','#23434a','#112e3a','#071e25']],
+ ['Plum Night',['#020003','#040005','#060006','#060307','#030205','#010203','#030104','#020003']],
+ ['Deep Brass',['#000202','#000403','#000602','#040301','#050301','#010503','#000303','#000202']],
  ['Indigo / Terracotta',['#172e8b','#3259b4','#548ac4','#bb593e','#d08043','#9b3d55','#3a4d9e','#172e8b']],
  ['Jade / Berry',['#174b4a','#2b7e69','#47977a','#9e3563','#bd4973','#7a3c77','#245a67','#174b4a']],
  ['Fire Flames',['#801100','#B62203','#D73502','#FC6400','#FF7500','#FAC000','#FF7500','#D73502']],
