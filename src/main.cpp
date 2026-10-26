@@ -221,6 +221,7 @@ void nextCometColor() { cometColor = (CometColor)(((int)cometColor + 1) % 6); }
 // =====================================================
 
 float vuPeak = 0.0f;
+float vuPeakColorLevel = 0.0f; // Captured height of last new peak; keeps its color during descent.
 uint32_t lastPeakUpdate = 0;
 uint32_t vuPeakHoldUntil = 0;
 
@@ -920,6 +921,7 @@ void updatePeak() {
 
     if (vu > vuPeak) {
         vuPeak = vu;
+        vuPeakColorLevel = vu;
         vuPeakHoldUntil = now + 350; // Hold peak visibly before its original falling speed.
     }
     else if ((int32_t)(now - vuPeakHoldUntil) >= 0) {
@@ -2020,12 +2022,16 @@ void applyPaletteFrame(LedMode effect) {
 // final stop (or first stop when reversed), without palette attenuation.
 void drawVUPeakDot(){
     if(vuPeak<=0.01f)return;
+    // Use the palette color at the captured peak height, not the final
+    // palette stop. Color remains fixed while the peak marker falls.
+    float captured=expandVU(vuPeakColorLevel);
+    uint16_t position=constrain((int)(captured*(NUM_LEDS-1)),0,NUM_LEDS-1);
     uint8_t id=activePalette(VU_METER);
     uint32_t color;
     if(id){
-        uint16_t end=paletteReverse[VU_METER]?0:NUM_LEDS-1;
-        color=saturatedPaletteColor(paletteColorAt(id,end),id);
-    }else color=vuColorAt(NUM_LEDS-1);
+        uint16_t palettePosition=paletteReverse[VU_METER]?NUM_LEDS-1-position:position;
+        color=saturatedPaletteColor(paletteColorAt(id,palettePosition),id);
+    }else color=vuColorAt(position);
     uint8_t r=(color>>16)&255,g=(color>>8)&255,b=color&255;
     uint8_t maximum=max((int)r,max((int)g,(int)b));
     if(maximum==0)return;
@@ -2665,6 +2671,7 @@ void applyModeChange(LedMode newMode) {
     resetBPM();
     resetEnergy();
     vuPeak = 0.0f;
+    vuPeakColorLevel = 0.0f;
     lastPeakUpdate = 0;
     vuPeakHoldUntil = 0;
     silenceStart = 0;
