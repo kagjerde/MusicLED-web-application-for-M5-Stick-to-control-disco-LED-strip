@@ -2917,7 +2917,7 @@ let particleIndex=)HTML");
 let bpmStyle=0;
 let randomEnabled=false;
 function showRandom(enabled){randomEnabled=enabled;const b=document.getElementById('randomBtn');b.classList.toggle('on',enabled);b.setAttribute('aria-pressed',String(enabled));}
-async function syncRandom(){try{const r=await fetch('/api/random-state',{cache:'no-store'});if(!r.ok)return;const d=await r.json();showRandom(d.enabled);highlight(d.mode);waveStyle=d.waveVariant;waveIndex=d.waveColor;vuStyle=d.vuCentered?1:0;vuIndex=d.vuColor;particleStyle=d.particleVariant;particleIndex=d.particleColor;bpmStyle=d.bpmDisplayVariant;energyCount=d.energyFlashes;updateVUHint();updateWaveHint();updateParticleHint();document.querySelector('[data-mode="3"] .hint').textContent=bpmStyles[bpmStyle];document.querySelector('[data-mode="4"] .hint').textContent=energyCount+' FLASH'+(energyCount===1?'':'ES');}catch(e){}}
+async function syncRandom(){try{const r=await fetch('/api/random-state',{cache:'no-store'});if(!r.ok)return;const d=await r.json();showRandom(d.enabled);highlight(d.mode);waveStyle=d.waveVariant;waveIndex=d.waveColor;vuStyle=d.vuCentered?1:0;vuIndex=d.vuColor;particleStyle=d.particleVariant;particleIndex=d.particleColor;bpmStyle=d.bpmDisplayVariant;energyCount=d.energyFlashes;updateVUHint();updateWaveHint();updateParticleHint();renderModeIcons();document.querySelector('[data-mode="3"] .hint').textContent=bpmStyles[bpmStyle];document.querySelector('[data-mode="4"] .hint').textContent=energyCount+' FLASH'+(energyCount===1?'':'ES');}catch(e){}}
 async function randomPress(){try{const r=await fetch('/api/random-next',{cache:'no-store'});if(r.ok)await syncRandom();}catch(e){}}
 function showSettings(){
  document.getElementById('homeBpm').hidden=true;
@@ -3017,7 +3017,7 @@ function renderPalettes(){
 function paletteLabel(id){const ids=[[1,2,3,4,33,34,35,36],[5,6,7,8,37,38,39,40,41,42,43,44],[9,10,11,12,13,14,15,16],[17,18,19,20,21,22,23,24],[25,26,27,28,29,30,31,32]];for(let g=0;g<ids.length;g++){const i=ids[g].indexOf(id);if(i>=0)return paletteGroups[g][1][i][0];}return 'DEFAULT';}
 async function loadPalettes(){try{
  const r=await fetch('/api/palettes',{cache:'no-store'});if(!r.ok)throw Error('Kunne ikke lese paletter');
- const d=await r.json();paletteSaved=d.saved;paletteTemporary=d.temporary;paletteReversed=d.reverse||[false,false,false,false,false,false];renderPalettes();
+ const d=await r.json();paletteSaved=d.saved;paletteTemporary=d.temporary;paletteReversed=d.reverse||[false,false,false,false,false,false];renderPalettes();renderModeIcons();
 }catch(e){document.getElementById('paletteStatus').textContent=e.message;}}
 function showPalettes(){
  document.getElementById('homeBpm').hidden=true;
@@ -3063,6 +3063,41 @@ async function saveLedConfig(){
  }catch(e){status.textContent='Kunne ikke lagre: '+e.message;}
 }
 async function tap(){try{await fetch('/api/tap',{cache:'no-store'});document.getElementById('manualMode').checked=true;refreshBPM();}catch(e){}}
+// Home icons follow the actual selected effect variant and palette.
+const defaultIconColors=[['#ff3c49','#ffc13b','#25d6c4'],['#20d77d','#ffca38','#ff4545'],['#ff314e','#ffc83c','#17baff'],['#ffffff'],['#ffe253','#ffffff'],['#a51500','#ff5a00','#ffcf32']];
+function currentIconColors(mode){
+ const id=paletteTemporary>0?paletteTemporary:paletteSaved[mode];
+ if(id>0){const groups=[[1,2,3,4,33,34,35,36],[5,6,7,8,37,38,39,40,41,42,43,44],[9,10,11,12,13,14,15,16],[17,18,19,20,21,22,23,24],[25,26,27,28,29,30,31,32]];
+ for(let g=0;g<groups.length;g++){const i=groups[g].indexOf(id);if(i>=0)return paletteGroups[g][1][i][1];}}
+ return defaultIconColors[mode];
+}
+function renderModeIcons(){
+ for(let mode=0;mode<6;mode++){
+ const pad=document.querySelector('.pad[data-mode="'+mode+'"]');if(!pad)continue;
+ const colors=currentIconColors(mode), col=i=>colors[i%colors.length];
+ let drawing='';
+ if(mode===0){
+  drawing=waveStyle===0?'<path d="M3 35 Q11 7 19 35 T35 35 T51 35 T67 35" fill="none" stroke="url(#g)" stroke-width="5"/><path d="M3 49 Q11 21 19 49 T35 49 T51 49 T67 49" fill="none" stroke="url(#g)" stroke-width="3"/>':
+  '<path d="M7 33 H57" stroke="url(#g)" stroke-width="2"/><circle cx="'+(waveStyle===1?47:waveStyle===2?17:32)+'" cy="33" r="7" fill="'+col(0)+'"/><path d="M9 44 L22 44 M40 22 L55 22" stroke="'+col(1)+'" stroke-width="4"/>';
+ }else if(mode===1){
+  drawing=(vuStyle?'<rect x="29" y="8" width="6" height="48" fill="'+col(0)+'"/><rect x="19" y="19" width="7" height="37" fill="'+col(1)+'"/><rect x="38" y="19" width="7" height="37" fill="'+col(1)+'"/><rect x="9" y="36" width="7" height="20" fill="'+col(2)+'"/><rect x="48" y="36" width="7" height="20" fill="'+col(2)+'"/>':
+  [12,24,36,48].map((x,i)=>'<rect x="'+x+'" y="'+(45-i*10)+'" width="8" height="'+(11+i*10)+'" rx="2" fill="'+col(i)+'"/>').join(''));
+ }else if(mode===2){
+  if(particleStyle===4)drawing='<circle cx="13" cy="48" r="5" fill="'+col(0)+'"/><circle cx="30" cy="21" r="5" fill="'+col(1)+'"/><circle cx="50" cy="39" r="5" fill="'+col(2)+'"/><path d="M8 51 Q20 4 32 20 T56 48" stroke="url(#g)" fill="none" stroke-dasharray="3 6" stroke-width="2"/>';
+  else if(particleStyle===5)drawing='<circle cx="32" cy="32" r="5" fill="'+col(0)+'"/>'+[0,45,90,135,180,225,270,315].map((a,i)=>{const rad=a*Math.PI/180;return '<path d="M'+(32+9*Math.cos(rad))+' '+(32+9*Math.sin(rad))+' L'+(32+25*Math.cos(rad))+' '+(32+25*Math.sin(rad))+'" stroke="'+col(i)+'" stroke-width="3" stroke-linecap="round"/>';}).join('');
+  else if(particleStyle===2)drawing='<circle cx="32" cy="32" r="23" fill="url(#g)" opacity=".45"/><circle cx="32" cy="32" r="12" fill="'+col(0)+'"/>';
+  else if(particleStyle===3)drawing='<path d="M6 45 L29 20 M18 54 L49 15 M34 53 L59 27" stroke="url(#g)" stroke-width="5" stroke-linecap="round"/>';
+  else drawing='<circle cx="32" cy="32" r="6" fill="'+col(0)+'"/><circle cx="32" cy="32" r="17" fill="none" stroke="'+col(1)+'" stroke-width="4"/><circle cx="32" cy="32" r="27" fill="none" stroke="'+col(2)+'" stroke-width="3"/>';
+ }else if(mode===3){
+  drawing=bpmStyle===0?'<path d="M4 33 H16 L24 13 L35 51 L44 33 H60" fill="none" stroke="url(#g)" stroke-width="5"/>':'<rect x="11" y="11" width="42" height="42" rx="9" fill="url(#g)"/>';
+ }else if(mode===4){
+  drawing='<path d="M36 5 14 35 H30 L27 59 50 25 H34 Z" fill="url(#g)"/>';
+  if(energyCount>1)drawing+='<text x="51" y="60" font-size="15" fill="'+col(0)+'" text-anchor="middle">'+energyCount+'</text>';
+ }else drawing='<path d="M34 5 C38 19 25 24 31 33 C37 28 39 23 41 17 C60 38 50 59 33 59 C10 59 8 42 18 29 C18 40 22 43 27 43 C22 30 27 18 34 5 Z" fill="url(#g)"/>';
+ const stops=colors.map((c,i)=>'<stop offset="'+(100*i/Math.max(1,colors.length-1))+'%" stop-color="'+c+'"/>').join('');
+ pad.querySelector('.symbol').innerHTML='<svg viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">'+stops+'</linearGradient></defs>'+drawing+'</svg>';
+ }
+}
 function updateVUHint(){document.querySelector('[data-mode="1"] .hint').textContent=vuStyle?'CENTER':'NORMAL';}
 function updateParticleHint(){document.querySelector('[data-mode="2"] .hint').textContent=particleVariants[particleStyle];}
 function updateWaveHint(){document.querySelector('[data-mode="0"] .hint').textContent=waveVariants[waveStyle];}
@@ -3084,12 +3119,12 @@ async function choose(n){try{
    else if(n===3)bpmStyle=1-bpmStyle;
    else if(n===4)energyCount=energyCount%4+1;
  }
- highlight(n);updateVUHint();updateWaveHint();updateParticleHint();
+ highlight(n);updateVUHint();updateWaveHint();updateParticleHint();renderModeIcons();
  document.querySelector('[data-mode="3"] .hint').textContent=bpmStyles[bpmStyle];
  document.querySelector('[data-mode="4"] .hint').textContent=energyCount+' FLASH'+(energyCount===1?'':'ES');
  document.querySelector('[data-mode="5"] .hint').textContent='FIRE & SPARKS';
 }catch(e){console.warn('Ingen kontakt med MusicLED',e);}}
-highlight(active);updateVUHint();updateWaveHint();updateParticleHint();
+highlight(active);updateVUHint();updateWaveHint();updateParticleHint();renderModeIcons();
 document.querySelector('[data-mode="3"] .hint').textContent=bpmStyles[bpmStyle];
 document.querySelector('[data-mode="4"] .hint').textContent=energyCount+' FLASH'+(energyCount===1?'':'ES');
 document.querySelector('[data-mode="5"] .hint').textContent='FIRE & SPARKS';
