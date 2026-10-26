@@ -1979,6 +1979,18 @@ uint32_t paletteStopColor(uint8_t id,uint32_t beat) {
     if(id<=24)return palettes1[id-17][0];
     return palettes2[id-25][index];
 }
+// Convert RGB stops to a hue for vivid multicolor interpolation.
+// Direct hue interpolation avoids pale/grey midpoints between strong colors.
+uint16_t vividPaletteHue(uint32_t color) {
+    int r=(color>>16)&255, g=(color>>8)&255, b=color&255;
+    int hi=max(r,max(g,b)), lo=min(r,min(g,b)), delta=hi-lo;
+    if(delta==0) return 0;
+    float sector = hi==r ? (float)(g-b)/delta :
+                   hi==g ? 2.0f+(float)(b-r)/delta :
+                           4.0f+(float)(r-g)/delta;
+    if(sector<0) sector+=6.0f;
+    return (uint16_t)(sector*(65536.0f/6.0f));
+}
 uint32_t paletteColorAt(uint8_t id, uint16_t position) {
     if (id < 1 || id > 40) return 0;
     const uint32_t* colors;
@@ -1995,6 +2007,21 @@ uint32_t paletteColorAt(uint8_t id, uint16_t position) {
     const uint8_t next = min((int)index+1, (int)count-1);
     const uint8_t fraction = (uint8_t)(scaled & 255);
     const uint32_t from = colors[index], to = colors[next];
+    // The 4/8-stop multicolor families use vivid hue transitions instead of
+    // RGB mixing, which otherwise makes some combinations look pastel/grey.
+    // Explicit neutral/white palettes retain their original authored colors.
+    if (count >= 4 && id != 11) {
+        uint16_t h1=vividPaletteHue(from), h2=vividPaletteHue(to);
+        int32_t diff=(int32_t)h2-(int32_t)h1;
+        if(diff>32768)diff-=65536;
+        if(diff< -32768)diff+=65536;
+        uint16_t hue=(uint16_t)((int32_t)h1+diff*fraction/256);
+        int v1=max((int)((from>>16)&255),max((int)((from>>8)&255),(int)(from&255)));
+        int v2=max((int)((to>>16)&255),max((int)((to>>8)&255),(int)(to&255)));
+        uint8_t value=(uint16_t)(v1*(256-fraction)+v2*fraction)/256;
+        // Keep the original palette brightness range but enforce strong chroma.
+        return strip.ColorHSV(hue,245,value);
+    }
     const uint8_t r = (((from>>16)&255)*(256-fraction) + ((to>>16)&255)*fraction) >> 8;
     const uint8_t g = (((from>>8)&255)*(256-fraction) + ((to>>8)&255)*fraction) >> 8;
     const uint8_t b = ((from&255)*(256-fraction) + (to&255)*fraction) >> 8;
