@@ -380,19 +380,14 @@ uint32_t paletteColorAt(uint8_t id, uint16_t position);
 uint32_t saturatedPaletteColor(uint32_t color,uint8_t id);
 uint32_t fireworkFragmentColor(uint16_t hue,uint8_t brightness) {
   uint8_t id=activePalette(COMET_BEAT);
-  uint32_t c=id ? paletteStopColor(id,(uint32_t)hue*paletteStopCount(id)/65536UL)
+  uint32_t c=id ? saturatedPaletteColor(paletteStopColor(id,(uint32_t)hue*paletteStopCount(id)/65536UL),id)
                 : strip.ColorHSV(hue,255,255);
   // Preserve the exact palette stop hue; remove its shared white component
   // for chromatic colors so explosion fragments never look pastel/washed out.
   uint8_t r=(c>>16)&255,g=(c>>8)&255,b=c&255;
   uint8_t hi=max((int)r,max((int)g,(int)b));
   uint8_t lo=min((int)r,min((int)g,(int)b));
-  if(hi>lo && lo>0){
-    r=(uint16_t)(r-lo)*hi/(hi-lo);
-    g=(uint16_t)(g-lo)*hi/(hi-lo);
-    b=(uint16_t)(b-lo)*hi/(hi-lo);
-    c=strip.Color(r,g,b);
-  }
+  // The shared transform already handles saturation without brightening.
   return strip.Color(((c>>16)&255)*brightness/255,((c>>8)&255)*brightness/255,(c&255)*brightness/255);
 }
 struct FireworkCore {float pos;uint16_t hue;uint32_t born;uint16_t duration;bool active;};
@@ -2101,12 +2096,25 @@ uint32_t paletteColorAt(uint8_t id, uint16_t position) {
 // Remove only the shared white component; never boost the peak to 255,
 // because that washes out the intermediate colors in all multi-color palettes.
 uint32_t saturatedPaletteColor(uint32_t color, uint8_t id) {
-    // Palettes deliberately containing white/grey retain those defined stops.
-    if (id == 11 || id == 24 || id == 30 || id == 32) return color;
+    // One shared palette output transform for Wave, VU, Fire and Particles.
+    // LED light appears much brighter than a CSS swatch at low RGB levels.
+    // A value curve restores dark palettes while preserving bright palettes.
     uint8_t r=(color>>16)&255, g=(color>>8)&255, b=color&255;
-    const uint8_t low=min(r,min(g,b));
-    (void)low;
-    return color; // Honor palette RGB; no artificial saturation boost.
+    uint8_t hi=max(r,max(g,b)), lo=min(r,min(g,b));
+    if (!hi) return 0;
+    // Preserve authored neutral/white stops. For chromatic stops, boost
+    // contrast by reducing the common RGB component, never raising the peak.
+    bool neutral=(id==11 || id==24 || id==30 || id==32);
+    if(!neutral && hi>lo){
+        uint8_t remove=(uint16_t)lo*55/100;
+        r-=remove;g-=remove;b-=remove;
+    }
+    // Approximate perceptual darkening (value^1.5), shared by all palettes.
+    // Bright stops remain bright; dark stops remain genuinely dark.
+    uint8_t corrected=(uint8_t)((uint32_t)hi*sqrtf((float)hi/255.0f)+0.5f);
+    return strip.Color((uint16_t)r*corrected/hi,
+                       (uint16_t)g*corrected/hi,
+                       (uint16_t)b*corrected/hi);
 }
 void applyPaletteFrame(LedMode effect) {
     if (effect == ENERGY_STROBE || effect == RAINBOW_MUSIC) return; // Wave renders palettes in its own animated renderer.
@@ -2848,11 +2856,11 @@ void showControlPage() {
 h1{font-size:23px;letter-spacing:.04em;margin:0}.sub{font-size:12px;color:#8e9db8;margin-top:4px}
 .dot{width:9px;height:9px;background:#3bdca4;border-radius:50%;box-shadow:0 0 12px #3bdca4}
 .pads{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-.pad{aspect-ratio:1/1;min-height:125px;border:1px solid #35405c;border-radius:22px;background:linear-gradient(145deg,#252e45,#151c2f);color:#eaf1ff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:13px;box-shadow:inset 0 1px #ffffff16,0 7px 0 #080c17;touch-action:manipulation;cursor:pointer;transition:transform .08s,background .1s,border-color .1s}
+.pad{aspect-ratio:1/1;min-height:125px;border:1px solid #35405c;border-radius:22px;background:linear-gradient(145deg,#252e45,#151c2f);color:#eaf1ff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;box-shadow:inset 0 1px #ffffff16,0 7px 0 #080c17;touch-action:manipulation;cursor:pointer;transition:transform .08s,background .1s,border-color .1s}
 .pad:active{transform:translateY(5px);box-shadow:inset 0 1px #ffffff16,0 2px 0 #080c17}
 .pad.active{background:linear-gradient(145deg,#174a68,#133047);border-color:#55d9ff;box-shadow:inset 0 0 0 1px #55d9ff55,0 6px 0 #071b2b,0 0 18px #28b9fa2e}
 .pad .symbol{width:55px;height:55px;display:grid;place-items:center}.symbol svg{width:52px;height:52px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
-.pad .name{font-size:13px;font-weight:750;letter-spacing:.065em;text-align:center}.pad .hint{font-size:10px;font-weight:500;color:#a1afc6;margin-top:-10px;letter-spacing:.025em}
+.pad .name{font-size:13px;font-weight:750;letter-spacing:.065em;text-align:center}.pad .hint{display:block;flex-shrink:0;min-height:14px;line-height:14px;font-size:10px;font-weight:500;color:#a1afc6;margin-top:0;letter-spacing:.025em;text-align:center}
 .footer{margin-top:auto;padding-top:25px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:center;color:#93a2bb;font-size:13px}
 .randomBtn{border:1px solid #38455f;background:#202a40;color:#d9e8ff;width:100%;height:52px;padding:0 6px;border-radius:14px;display:flex;align-items:center;gap:9px;font:600 12px system-ui;letter-spacing:.05em;touch-action:manipulation}.randomBtn.on{background:#174a68;border-color:#55d9ff;color:#fff;box-shadow:0 0 12px #28b9fa44}.randomBtn svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .gear{border:1px solid #38455f;background:#202a40;color:white;width:100%;height:52px;border-radius:15px;display:grid;place-items:center;text-decoration:none}
@@ -2947,7 +2955,7 @@ let particleIndex=)HTML");
 let bpmStyle=0;
 let randomEnabled=false;
 function showRandom(enabled){randomEnabled=enabled;const b=document.getElementById('randomBtn');b.classList.toggle('on',enabled);b.setAttribute('aria-pressed',String(enabled));}
-async function syncRandom(){try{const r=await fetch('/api/random-state',{cache:'no-store'});if(!r.ok)return;const d=await r.json();showRandom(d.enabled);highlight(d.mode);waveStyle=d.waveVariant;waveIndex=d.waveColor;vuStyle=d.vuCentered?1:0;vuIndex=d.vuColor;particleStyle=d.particleVariant;particleIndex=d.particleColor;bpmStyle=d.bpmDisplayVariant;energyCount=d.energyFlashes;fireGlitter=!!d.fireGlitter;updateVUHint();updateWaveHint();updateParticleHint();renderModeIcons();document.querySelector('[data-mode="3"] .hint').textContent=bpmStyles[bpmStyle];document.querySelector('[data-mode="4"] .hint').textContent=energyCount+' FLASH'+(energyCount===1?'':'ES');}catch(e){}}
+async function syncRandom(){try{const r=await fetch('/api/random-state',{cache:'no-store'});if(!r.ok)return;const d=await r.json();showRandom(d.enabled);highlight(d.mode);waveStyle=d.waveVariant;waveIndex=d.waveColor;vuStyle=d.vuCentered?1:0;vuIndex=d.vuColor;particleStyle=d.particleVariant;particleIndex=d.particleColor;bpmStyle=d.bpmDisplayVariant;energyCount=d.energyFlashes;fireGlitter=!!d.fireGlitter;updateVUHint();updateWaveHint();updateParticleHint();renderModeIcons();document.querySelector('[data-mode="3"] .hint').textContent=bpmStyles[bpmStyle];document.querySelector('[data-mode="4"] .hint').textContent=energyCount+' FLASH'+(energyCount===1?'':'ES');document.querySelector('[data-mode="5"] .hint').textContent=fireGlitter?'WITH BLINK':'STANDARD';}catch(e){}}
 async function randomPress(){try{const r=await fetch('/api/random-next',{cache:'no-store'});if(r.ok){await syncRandom();await loadPalettes();}}catch(e){}}
 function showSettings(){
  document.getElementById('homeBpm').hidden=true;
