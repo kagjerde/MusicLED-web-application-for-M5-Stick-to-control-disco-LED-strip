@@ -65,9 +65,12 @@ volatile LedMode mode = RAINBOW_MUSIC;
 volatile uint8_t effectPalette[6] = {0,0,0,0,0,0};
 volatile int8_t temporaryGlobalPalette = -1;
 volatile uint32_t paletteRevision = 0;
+static bool randomPlay = false;
+volatile int8_t randomPaletteOverride = -1; // Snapshot at Random start; subsequent choices apply to every effect
 volatile bool paletteReverse[6] = {false,false,false,false,false,false};
 uint8_t activePalette(uint8_t effect) {
-    return temporaryGlobalPalette > 0 ? (uint8_t)temporaryGlobalPalette : effectPalette[effect];
+    return (randomPlay && randomPaletteOverride >= 0) ? (uint8_t)randomPaletteOverride :
+           (temporaryGlobalPalette > 0 ? (uint8_t)temporaryGlobalPalette : effectPalette[effect]);
 }
 
 volatile int requestedMode = -1;
@@ -2710,7 +2713,6 @@ bool webStarted = false;
 void applyModeChange(LedMode newMode);
 // Random Play: a selection must last 3 minutes AND music must be silent
 // for 3 continuous seconds before the next automatic selection.
-static bool randomPlay = false;
 static uint32_t randomSelectedAt = 0;
 static uint32_t randomSilentSince = 0;
 static int randomPreviousKey = -1;
@@ -2923,7 +2925,7 @@ let bpmStyle=0;
 let randomEnabled=false;
 function showRandom(enabled){randomEnabled=enabled;const b=document.getElementById('randomBtn');b.classList.toggle('on',enabled);b.setAttribute('aria-pressed',String(enabled));}
 async function syncRandom(){try{const r=await fetch('/api/random-state',{cache:'no-store'});if(!r.ok)return;const d=await r.json();showRandom(d.enabled);highlight(d.mode);waveStyle=d.waveVariant;waveIndex=d.waveColor;vuStyle=d.vuCentered?1:0;vuIndex=d.vuColor;particleStyle=d.particleVariant;particleIndex=d.particleColor;bpmStyle=d.bpmDisplayVariant;energyCount=d.energyFlashes;updateVUHint();updateWaveHint();updateParticleHint();renderModeIcons();document.querySelector('[data-mode="3"] .hint').textContent=bpmStyles[bpmStyle];document.querySelector('[data-mode="4"] .hint').textContent=energyCount+' FLASH'+(energyCount===1?'':'ES');}catch(e){}}
-async function randomPress(){try{const r=await fetch('/api/random-next',{cache:'no-store'});if(r.ok)await syncRandom();}catch(e){}}
+async function randomPress(){try{const r=await fetch('/api/random-next',{cache:'no-store'});if(r.ok){await syncRandom();await loadPalettes();}}catch(e){}}
 function showSettings(){
  document.getElementById('homeBpm').hidden=true;
  document.getElementById('paletteView').hidden=true;
@@ -3040,7 +3042,7 @@ async function togglePaletteReverse(){try{
 async function savePalette(id){try{
  const r=await fetch('/api/palette?mode='+active+'&id='+id,{method:'POST',cache:'no-store'});
  if(!r.ok)throw Error(await r.text());
- document.getElementById('paletteStatus').textContent=((id>=1&&id<=4)||(id>=33&&id<=36))?'Midlertidig global palett valgt':'Palett lagret for '+paletteNames[active];
+ document.getElementById('paletteStatus').textContent=randomEnabled?'Palett valgt for alle effekter i RANDOM':(((id>=1&&id<=4)||(id>=33&&id<=36))?'Midlertidig global palett valgt':'Palett lagret for '+paletteNames[active]);
  await loadPalettes();
 }catch(e){document.getElementById('paletteStatus').textContent='Feil: '+e.message;}}
 
@@ -3240,7 +3242,7 @@ void beginWiFi() {
         if (setupAPActive) { webServer.send(403, "text/plain", "Setup mode"); return; }
         String json = "{\"saved\":[";
         for (uint8_t i=0;i<6;i++) { if (i) json += ","; json += String(effectPalette[i]); }
-        json += "],\"temporary\":" + String((int)temporaryGlobalPalette) + ",\"reverse\":[";
+        json += "],\"temporary\":" + String(randomPlay ? (int)randomPaletteOverride : (int)temporaryGlobalPalette) + ",\"random\":" + (randomPlay ? "true" : "false") + ",\"reverse\":[";
         for (uint8_t i=0;i<6;i++) { if (i) json += ","; json += paletteReverse[i] ? "true" : "false"; }
         json += "]}";
         webServer.sendHeader("Cache-Control", "no-store");
@@ -3270,7 +3272,9 @@ void beginWiFi() {
         if (modeId<0 || modeId>=6 || paletteId<0 || paletteId>44) {
             webServer.send(400,"text/plain","Out of range"); return;
         }
-        if ((paletteId>=1 && paletteId<=4) || (paletteId>=33 && paletteId<=36)) {
+        if (randomPlay) {
+            randomPaletteOverride=(int8_t)paletteId; // Explicit selection in Random applies to all six effects.
+        } else if ((paletteId>=1 && paletteId<=4) || (paletteId>=33 && paletteId<=36)) {
             temporaryGlobalPalette=(int8_t)paletteId;
         } else {
             temporaryGlobalPalette=-1;
@@ -3322,6 +3326,7 @@ void beginWiFi() {
     });
     webServer.on("/api/random-next", HTTP_GET, []() {
         if (setupAPActive) { webServer.send(403, "text/plain", "Setup mode"); return; }
+        if (!randomPlay) randomPaletteOverride = (int8_t)activePalette((uint8_t)mode); // Keep current palette on first Random press.
         randomPlay = true;
         // Clear pending manual commands to prevent them overriding this selection.
         requestedMode = -1;
