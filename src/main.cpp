@@ -463,8 +463,8 @@ void updateParticles(){
  if(particleVariant==5 && rocketActive){
    particleRocket+=particleRocketVel*dt;particleRocketVel-=55.0f*dt;
    int head=(int)roundf(particleRocket);
-   particlePaintExclusive(head,fireworkFragmentColor(particleRocketHue,255));
-   particlePaintExclusive(head-1,fireworkFragmentColor(particleRocketHue,80));
+   particlePaintExclusive(head,strip.Color(255,255,255));
+   particlePaintExclusive(head-1,strip.Color(80,80,80));
    if(particleRocketVel<=0 || particleRocket>=NUM_LEDS-2){
      rocketActive=false;
      // The explosion happens after launch, not necessarily on the next beat.
