@@ -1678,22 +1678,7 @@ void updateRainbow() {
             vu * 210
         );
 
-    // TEMPORARY PETROL COLOR DIAGNOSTIC for Wave Standard + Midnight Petrol.
-    // Three stationary equal-length zones with exact authored palette RGB.
-    // No interpolation, audio scaling, saturation or brightness curve.
-    // LED 0 is at the bottom: blue petrol, turquoise petrol, green petrol.
-    // All other palettes and Wave variants are unchanged.
     uint8_t wavePalette=activePalette(RAINBOW_MUSIC);
-    if(waveVariant==0 && wavePalette==33){
-        for(int i=0;i<NUM_LEDS;i++){
-            uint8_t zone=(uint32_t)i*3/NUM_LEDS;
-            uint32_t testColor=zone==0 ? strip.Color(18,60,80) :
-                               zone==1 ? strip.Color(23,87,91) :
-                                         strip.Color(40,105,94);
-            strip.setPixelColor(i,testColor);
-        }
-        return;
-    }
     // Palette Wave uses the exact original animated hue phase and audio
     // brightness; only the color source changes.
     if(wavePalette){
@@ -2202,6 +2187,8 @@ void drawVUPeakDot(){
         strip.setPixelColor(peak,color);
     }
 }
+static bool rgbTestEnabled=false;
+static uint32_t rgbTestColors[3]={0x123c50,0x17575b,0x28695e};
 void ledTask(void* parameter) {
     LedMode previousMode = RAINBOW_MUSIC;
 
@@ -2216,6 +2203,19 @@ void ledTask(void* parameter) {
             strip.setBrightness(currentBrightness);
         }
         LedMode currentMode = mode;
+        bool testOn;
+        uint32_t testColors[3];
+        portENTER_CRITICAL(&ledMux);
+        testOn=rgbTestEnabled;
+        for(int k=0;k<3;k++)testColors[k]=rgbTestColors[k];
+        portEXIT_CRITICAL(&ledMux);
+        if(testOn){
+            for(int i=0;i<NUM_LEDS;i++)
+                strip.setPixelColor(i,testColors[(uint32_t)i*3/NUM_LEDS]);
+            strip.show();
+            vTaskDelay(pdMS_TO_TICKS(35));
+            continue;
+        }
         bool paletteChanged=(lastPaletteRevision!=paletteRevision);
         if (paletteChanged) lastPaletteRevision=paletteRevision;
 
