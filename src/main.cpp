@@ -357,17 +357,18 @@ volatile uint8_t particleVariant=0; // 0 explosion, 1 diffusion, 2 breathe, 3 st
 volatile uint8_t particleColor=5; // classic, blue, red, purple, gold, rainbow
 volatile bool requestedParticleVariant=false;
 volatile bool requestedParticleColor=false;
-struct Particle {float pos, vel, life; uint32_t start; uint8_t type; uint16_t hue; bool active;};
-static Particle particles[24];
+struct Particle {float pos, vel, life; uint32_t start; uint8_t type; uint16_t hue; bool active; float origin, fadeRate;};
+static Particle particles[72];
 static uint32_t particleBeat=0, particleLastFrame=0;
 volatile uint32_t particleOnsetCount=0; // Raw detected bass peaks for responsive center effects
 static float particleGlow=0;
 static uint8_t particleNext=0;
 static uint32_t particleLastLaunch=0;
 static uint8_t particleBurst=0;
-static float particleRocket=0, particleRocketVel=0;
-static bool rocketActive=false;
-static uint16_t particleRocketHue=0;
+struct FireworkRocket {float pos, vel, power; uint16_t hue; bool active;};
+static FireworkRocket fireworkRockets[3] = {};
+static uint32_t fireworkBassSerial=0;
+static uint32_t fireworkLastLaunch=0;
 uint8_t paletteStopCount(uint8_t id);
 uint32_t paletteStopColor(uint8_t id,uint32_t beat);
 uint32_t paletteColorAt(uint8_t id, uint16_t position);
@@ -393,8 +394,11 @@ static float fireworkPower=0.0f; // Captured from music strength at rocket launc
 
 void resetParticles(){
   for(auto &p:particles)p.active=false;
-  particleBeat=particleOnsetCount;particleLastFrame=millis();particleGlow=0;
-  particleLastLaunch=0;rocketActive=false;particleBurst=0;fireworkPower=0.0f;
+  particleBeat=(particleVariant==0||particleVariant==1||particleVariant==5)?particleOnsetCount:bpmFlashCount;
+  particleLastFrame=millis();particleGlow=0;
+  particleLastLaunch=0;particleBurst=0;fireworkPower=0.0f;
+  fireworkBassSerial=0;fireworkLastLaunch=0;
+  for(auto &rocket:fireworkRockets)rocket.active=false;
 }
 uint32_t particleRGB(uint16_t hue, uint8_t strength){
   uint8_t r=0,g=0,b=0;
@@ -426,13 +430,13 @@ void particlePaintExclusive(int i,uint32_t color){
  if(newMax>=oldMax)strip.setPixelColor(i,color);
 }
 void particleSpawn(float pos,float vel,float life,uint8_t type,uint16_t hue){
- Particle &p=particles[particleNext++%24];
- p={pos,vel,life,millis(),type,hue,true};
+ Particle &p=particles[particleNext++%72];
+ p={pos,vel,life,millis(),type,hue,true,pos,0.72f};
 }
 void updateParticles(){
  uint32_t now=millis();float dt=min(0.06f,(now-particleLastFrame)*.001f);particleLastFrame=now;
  strip.clear();
- uint32_t beatSource=(particleVariant==0||particleVariant==1) ? particleOnsetCount : bpmFlashCount;
+ uint32_t beatSource=(particleVariant==0||particleVariant==1||particleVariant==5) ? particleOnsetCount : bpmFlashCount;
  uint32_t beats=beatSource-particleBeat;particleBeat=beatSource;
  if(beats>3)beats=3;
  bool beat=beats>0 && audioIsActive;
@@ -451,15 +455,23 @@ void updateParticles(){
      const float targetHeight=(NUM_LEDS-1)*heightFraction;
      const float v=sqrtf(2.0f*55.0f*targetHeight);
      particleSpawn(0,v,1.0f,4,(uint16_t)random(65536));
-   }else if(particleVariant==5 && !rocketActive){
-     rocketActive=true;particleRocket=0;
-     // Vary each burst with the beat energy: previous soft burst is the floor.
-     // Dynamics and VU envelope respond to musical peaks, not random brightness.
-     fireworkPower=constrain(vu,0.0f,1.0f);
-     // Random explosion height: 40%-95% of the strip, not a fixed apex.
-     const float targetHeight=(NUM_LEDS-1)*(random(25,61)*.01f);
-     particleRocketVel=sqrtf(2.0f*55.0f*targetHeight);
-     particleRocketHue=(uint16_t)random(65536);
+   }else if(particleVariant==5){
+     // Launch on alternate detected bass onsets, no faster than 300 ms.
+     // Independent rocket slots allow up to three rockets simultaneously.
+     for(uint32_t k=0;k<beats;k++){
+       ++fireworkBassSerial;
+       if((fireworkBassSerial&1U)!=0 || now-fireworkLastLaunch<300)continue;
+       for(auto &rocket:fireworkRockets){
+         if(rocket.active)continue;
+         rocket.active=true;rocket.pos=0;
+         rocket.power=constrain(vu,0.0f,1.0f);
+         rocket.hue=(uint16_t)random(65536);
+         const float height=(NUM_LEDS-1)*(random(25,61)*.01f);
+         rocket.vel=sqrtf(2.0f*55.0f*height);
+         fireworkLastLaunch=now;
+         break;
+       }
+     }
    }
  }
  particleGlow*=powf(.18f,dt);
@@ -473,24 +485,31 @@ void updateParticles(){
    particleLastLaunch=now;
    particleSpawn(random(NUM_LEDS),((random(2)?1:-1)*(5+random(14))),1.0f,3,(uint16_t)random(65536));
  }
- if(particleVariant==5 && rocketActive){
-   particleRocket+=particleRocketVel*dt;particleRocketVel-=55.0f*dt;
-   int head=(int)roundf(particleRocket);
-   particlePaintExclusive(head,strip.Color(255,255,255));
-   if(particleRocketVel<=0 || particleRocket>=NUM_LEDS-2){
-     rocketActive=false;
-     // The explosion happens after launch, not necessarily on the next beat.
-     const float power=fireworkPower;
-      const int fragments=12+(int)(power*8.0f); // 12 soft to 20 strong
-      const float spread=0.65f+random(75)*.01f;
-      // Matched outward pairs: equal speed in both directions, no gravity.
-      for(int k=0;k<fragments;k+=2){
-        const float velocity=12.0f+random(12,28)*spread;
-        const float life=0.90f+power*0.22f+random(10)*.01f;
-        const uint16_t hue=(uint16_t)(particleRocketHue+random(65536));
-        particleSpawn(particleRocket,-velocity,life,5,hue);
-        if(k+1<fragments)particleSpawn(particleRocket,velocity,life,5,hue);
-      }
+ if(particleVariant==5){
+   for(auto &rocket:fireworkRockets){
+     if(!rocket.active)continue;
+     rocket.pos+=rocket.vel*dt;rocket.vel-=55.0f*dt;
+     particlePaintExclusive((int)roundf(rocket.pos),strip.Color(255,255,255));
+     if(rocket.vel<=0 || rocket.pos>=NUM_LEDS-2){
+       rocket.active=false;
+       const float origin=constrain(rocket.pos,0.0f,(float)(NUM_LEDS-1));
+       const float power=rocket.power;
+       const int fragments=12+(int)(power*8.0f);
+       const float spread=0.65f+random(75)*.01f;
+       for(int k=0;k<fragments;k+=2){
+         const float velocity=12.0f+random(12,28)*spread;
+         const float life=0.90f+power*0.22f+random(10)*.01f;
+         const uint16_t hue=(uint16_t)(rocket.hue+random(65536));
+         particleSpawn(origin,-velocity,life,5,hue);
+         Particle &left=particles[(particleNext+71)%72];
+         left.fadeRate=0.85f-0.20f*power;
+         if(k+1<fragments){
+           particleSpawn(origin,velocity,life,5,hue);
+           Particle &right=particles[(particleNext+71)%72];
+           right.fadeRate=left.fadeRate;
+         }
+       }
+     }
    }
  }
  for(auto &p:particles){
@@ -536,11 +555,14 @@ void updateParticles(){
      }
      if(p.type==5){
        // Fragments travel at most 20-30 LEDs from the burst, then disappear.
-       if (fabsf(p.pos-particleRocket)>25.0f) {p.active=false;continue;}
-       p.life-=dt*(0.72f-0.20f*fireworkPower);
+       const float distance=fabsf(p.pos-p.origin);
+       if(distance>25.0f){p.active=false;continue;}
+       p.life-=dt*p.fadeRate;
        if(p.life<=0){p.active=false;continue;}
      }
-     uint8_t v=(uint8_t)(255.0f*(p.type==4?1.0f:constrain(p.life,0.0f,1.0f)));
+     float strength=p.type==5 ? constrain(p.life,0.0f,1.0f)*constrain((25.0f-fabsf(p.pos-p.origin))/12.0f,0.0f,1.0f) : 1.0f;
+     if(p.type==5 && strength<0.025f){p.active=false;continue;}
+     uint8_t v=(uint8_t)(255.0f*strength);
      if(p.type==5){
        particlePaintExclusive((int)roundf(p.pos),fireworkFragmentColor(p.hue,v));
        int tail=(int)roundf(p.pos-p.vel*.03f);
