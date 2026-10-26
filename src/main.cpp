@@ -2998,7 +2998,7 @@ const paletteGroups=[
  ]]
 ];
 let paletteSaved=[0,0,0,0,0,0],paletteTemporary=-1,paletteReversed=[false,false,false,false,false,false];
-let paletteLastChosen=null;
+
 const paletteNames=['WAVE','VU METER','PARTICLES','BPM AUTO','ENERGY','FIRE'];
 function renderPalettes(){
  const root=document.getElementById('paletteGroups');root.replaceChildren();
@@ -3008,8 +3008,8 @@ function renderPalettes(){
  const variant=active===0?waveVariants[waveStyle]:active===1?(vuStyle?'CENTER':'NORMAL'):active===2?particleVariants[particleStyle]:active===3?bpmStyles[bpmStyle]:active===4?(energyCount+' FLASH'+(energyCount===1?'':'ES')):'FIRE & SPARKS';
  const stored=paletteLabel(paletteSaved[active]);
  const current=randomEnabled?paletteTemporary:(paletteTemporary>0?paletteTemporary:paletteSaved[active]);
- const recent=paletteLastChosen===null?'Ingen nye valg':paletteLabel(paletteLastChosen);
- document.getElementById('paletteModeName').textContent='Animasjon: '+paletteNames[active]+' · Variant: '+variant+' | Lagret farge: '+stored+' | Aktiv farge: '+paletteLabel(current)+' | Siste valg: '+recent+(randomEnabled?' · RANDOM':'');
+
+ document.getElementById('paletteModeName').textContent='Animasjon: '+paletteNames[active]+' · Variant: '+variant+' | Lagret farge: '+stored+' | Aktiv farge: '+paletteLabel(current)+(randomEnabled?' · RANDOM':'');
  let id=1;
  const paletteIds=[[1,2,3,4,33,34,35,36],[5,6,7,8,37,38,39,40,41,42,43,44],Array.from({length:8},(_,i)=>9+i),Array.from({length:8},(_,i)=>17+i),Array.from({length:8},(_,i)=>25+i)];
  paletteGroups.forEach((group,g)=>{
@@ -3047,7 +3047,6 @@ async function togglePaletteReverse(){try{
 async function savePalette(id){try{
  const r=await fetch('/api/palette?mode='+active+'&id='+id,{method:'POST',cache:'no-store'});
  if(!r.ok)throw Error(await r.text());
- paletteLastChosen=id;
  document.getElementById('paletteStatus').textContent=randomEnabled?'Palett valgt for alle effekter i RANDOM':(((id>=1&&id<=4)||(id>=33&&id<=36))?'Midlertidig global palett valgt':'Palett lagret for '+paletteNames[active]);
  await loadPalettes();
 }catch(e){document.getElementById('paletteStatus').textContent='Feil: '+e.message;}}
