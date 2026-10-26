@@ -2899,7 +2899,7 @@ h1{font-size:23px;letter-spacing:.04em;margin:0}.sub{font-size:12px;color:#8e9db
 .pad .hint{display:block!important}
 .rgbTester{margin-top:16px;padding:14px;border:1px solid #35405c;border-radius:16px;background:#172033}
 .rgbTester strong{font-size:13px;letter-spacing:.08em}.rgbTester p{font-size:11px;color:#a1afc6;margin:4px 0 10px}
-.rgbRow{display:grid;grid-template-columns:62px repeat(3,minmax(0,1fr));gap:7px;align-items:end;margin:9px 0}
+.rgbRow{display:grid;grid-template-columns:74px minmax(0,1fr) 30px;gap:9px;align-items:center;margin:9px 0}.rgbSwatch{width:28px;height:28px;border:1px solid #42506b;border-radius:7px}
 .rgbRow .zone{font-size:11px;color:#a1afc6;padding-bottom:10px}.rgbRow label{display:flex;flex-direction:column;gap:3px;font-size:10px;color:#a1afc6}
 .rgbRow input{width:100%;min-width:0;box-sizing:border-box;background:#0e1728;color:#fff;border:1px solid #42506b;border-radius:7px;padding:8px 3px;text-align:center;font-size:14px}
 .rgbActions{display:flex;gap:8px;margin-top:12px}.rgbActions button{flex:1;border:0;border-radius:9px;padding:11px 5px;font-size:11px;font-weight:700;color:white;background:#176f9a}.rgbActions button+button{background:#38445b}
@@ -3154,25 +3154,32 @@ function currentIconColors(mode){
  for(let g=0;g<groups.length;g++){const i=groups[g].indexOf(id);if(i>=0)return paletteGroups[g][1][i][1];}}
  return defaultIconColors[mode];
 }
-const rgbDefaults=[[18,60,80],[23,87,91],[40,105,94]];
+const rgbDefaults=['#000002','#000502','#000801'];
 function setupRGBTest(){
  const names=['NEDERST','MIDTEN','ØVERST'];
  document.getElementById('rgbRows').innerHTML=names.map((name,i)=>
  '<div class="rgbRow"><span class="zone">'+name+'</span>'+
- ['R','G','B'].map((channel,j)=>'<label>'+channel+'<input type="number" inputmode="numeric" min="0" max="255" id="rgb'+i+j+'" value="'+rgbDefaults[i][j]+'"></label>').join('')+'</div>').join('');
+ '<label>HEX<input type="text" inputmode="text" spellcheck="false" maxlength="7" id="rgbHex'+i+'" value="'+rgbDefaults[i]+'" placeholder="#000502"></label>'+
+ '<span class="rgbSwatch" id="rgbSwatch'+i+'" style="background:'+rgbDefaults[i]+'"></span></div>').join('');
+ names.forEach((_,i)=>document.getElementById('rgbHex'+i).addEventListener('input',function(){
+  const hex=this.value.trim();
+  document.getElementById('rgbSwatch'+i).style.background=/^#[0-9a-fA-F]{6}$/.test(hex)?hex:'#101827';
+ }));
 }
 async function applyRGBTest(){
  const values=[];
- for(let i=0;i<3;i++)for(let j=0;j<3;j++){
-  const el=document.getElementById('rgb'+i+j);
-  const v=Number(el.value);
-  if(!Number.isInteger(v)||v<0||v>255){document.getElementById('rgbTestStatus').textContent='Bruk heltall fra 0 til 255';el.focus();return;}
-  values.push(v);
+ for(let i=0;i<3;i++){
+  const el=document.getElementById('rgbHex'+i),hex=el.value.trim();
+  if(!/^#[0-9a-fA-F]{6}$/.test(hex)){
+   document.getElementById('rgbTestStatus').textContent='Bruk HEX-format #RRGGBB, f.eks. #000502';
+   el.focus();return;
+  }
+  values.push(parseInt(hex.slice(1,3),16),parseInt(hex.slice(3,5),16),parseInt(hex.slice(5,7),16));
  }
  try{
   const r=await fetch('/api/rgb-test',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'enabled=1&values='+values.join(',')});
   if(!r.ok)throw Error();
-  document.getElementById('rgbTestStatus').textContent='Statisk RGB-test aktiv';
+  document.getElementById('rgbTestStatus').textContent='Statisk HEX-test aktiv';
  }catch(e){document.getElementById('rgbTestStatus').textContent='Kunne ikke starte testen';}
 }
 async function stopRGBTest(){
