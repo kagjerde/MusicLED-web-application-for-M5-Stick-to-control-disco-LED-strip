@@ -1997,7 +1997,7 @@ void applyPaletteFrame(LedMode effect) {
     if (effect == ENERGY_STROBE || effect == RAINBOW_MUSIC) return; // Wave renders palettes in its own animated renderer.
     if (effect == COMET_BEAT && particleVariant == 5) return; // Firework fragments use individual palette-stop colors.
     uint8_t id = activePalette((uint8_t)effect);
-    if (!id || id > 32) return; // DEFAULT retains original effect colors.
+    if (!id || id > 40) return; // DEFAULT retains original effect colors.
     for (uint16_t i=0; i<NUM_LEDS; i++) {
         uint32_t old = strip.getPixelColor(i);
         uint8_t r=(old>>16)&255, g=(old>>8)&255, b=old&255;
