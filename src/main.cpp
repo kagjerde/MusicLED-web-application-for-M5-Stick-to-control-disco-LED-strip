@@ -366,11 +366,12 @@ static uint8_t particleBurst=0;
 static float particleRocket=0, particleRocketVel=0;
 static bool rocketActive=false;
 static uint16_t particleRocketHue=0;
+static float fireworkPower=0.0f; // Captured from music strength at rocket launch
 
 void resetParticles(){
   for(auto &p:particles)p.active=false;
   particleBeat=bpmFlashCount;particleLastFrame=millis();particleGlow=0;
-  particleLastLaunch=0;rocketActive=false;particleBurst=0;
+  particleLastLaunch=0;rocketActive=false;particleBurst=0;fireworkPower=0.0f;
 }
 uint32_t particleRGB(uint16_t hue, uint8_t strength){
   uint8_t r=0,g=0,b=0;
@@ -419,6 +420,9 @@ void updateParticles(){
      particleSpawn(0,v,1.0f,4,(uint16_t)random(65536));
    }else if(particleVariant==5 && !rocketActive){
      rocketActive=true;particleRocket=0;
+     // Vary each burst with the beat energy: previous soft burst is the floor.
+     // Dynamics and VU envelope respond to musical peaks, not random brightness.
+     fireworkPower=constrain(vu,0.0f,1.0f);
      // Random explosion height: 40%-95% of the strip, not a fixed apex.
      const float targetHeight=(NUM_LEDS-1)*(random(40,96)*.01f);
      particleRocketVel=sqrtf(2.0f*55.0f*targetHeight);
@@ -444,11 +448,12 @@ void updateParticles(){
    if(particleRocketVel<=0 || particleRocket>=NUM_LEDS-2){
      rocketActive=false;
      // The explosion happens after launch, not necessarily on the next beat.
-     const int fragments=random(6,11);
+     const float power=fireworkPower;
+      const int fragments=6+(int)(power*12.0f); // 6 soft to 18 strong
       const float spread=0.65f+random(75)*.01f;
       for(int k=0;k<fragments;k++){
         const float velocity=(random(2)?1.0f:-1.0f)*(12.0f+random(12,28)*spread);
-        particleSpawn(particleRocket,velocity,0.70f+random(20)*.01f,5,
+        particleSpawn(particleRocket,velocity,0.70f+power*0.30f+random(10)*.01f,5,
                       (uint16_t)(particleRocketHue+random(65536)));
       }
    }
@@ -493,7 +498,7 @@ void updateParticles(){
      if(p.type==5){
        // Fragments travel at most 20-30 LEDs from the burst, then disappear.
        if (fabsf(p.pos-particleRocket)>25.0f) {p.active=false;continue;}
-       p.life-=dt*1.25f;
+       p.life-=dt*(1.25f-0.50f*fireworkPower);
        if(p.life<=0){p.active=false;continue;}
      }
      uint8_t v=(uint8_t)(255*(p.type==4?1.0f:p.life));
