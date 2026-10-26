@@ -2527,7 +2527,7 @@ let particleIndex=)HTML");
     h += F(R"HTML(;
 let randomEnabled=false;
 function showRandom(enabled){randomEnabled=enabled;const b=document.getElementById('randomBtn');b.classList.toggle('on',enabled);b.setAttribute('aria-pressed',String(enabled));}
-async function syncRandom(){try{const r=await fetch('/api/random-state',{cache:'no-store'});if(!r.ok)return;const d=await r.json();showRandom(d.enabled);highlight(d.mode);waveStyle=d.waveVariant;waveIndex=d.waveColor;vuStyle=d.vuCentered?1:0;vuIndex=d.vuColor;particleStyle=d.particleVariant;particleIndex=d.particleColor;bpmColorIndex=d.bpmColor;energyCount=d.energyFlashes;updateVUHint();updateWaveHint();updateParticleHint();document.querySelector('[data-mode="3"] .hint').textContent=bpmColors[bpmColorIndex];document.querySelector('[data-mode="4"] .hint').textContent=energyCount+' FLASH'+(energyCount===1?'':'ES');}catch(e){}}
+async function syncRandom(){try{const r=await fetch('/api/random-state',{cache:'no-store'});if(!r.ok)return;const d=await r.json();showRandom(d.enabled);highlight(d.mode);waveStyle=d.waveVariant;waveIndex=d.waveColor;vuStyle=d.vuCentered?1:0;vuIndex=d.vuColor;particleStyle=d.particleVariant;particleIndex=d.particleColor;bpmColorIndex=d.bpmColor;energyCount=d.energyFlashes;updateVUHint();updateWaveHint();updateParticleHint();document.querySelector('[data-mode="3"] .hint').textContent='BPM AUTO';document.querySelector('[data-mode="4"] .hint').textContent=energyCount+' FLASH'+(energyCount===1?'':'ES');}catch(e){}}
 async function randomPress(){try{const r=await fetch('/api/random-next',{cache:'no-store'});if(r.ok)await syncRandom();}catch(e){}}
 function showSettings(){
  document.getElementById('homeView').hidden=true;
@@ -2562,43 +2562,34 @@ async function saveLedConfig(){
  }catch(e){status.textContent='Kunne ikke lagre: '+e.message;}
 }
 async function tap(){try{await fetch('/api/tap',{cache:'no-store'});document.getElementById('manualMode').checked=true;refreshBPM();}catch(e){}}
-function updateVUHint(){document.querySelector('[data-mode="1"] .hint').textContent=vuColors[vuIndex]+' · '+(vuStyle?'CENTER':'NORMAL');}
-function updateParticleHint(){document.querySelector('[data-mode="2"] .hint').textContent=particleColors[particleIndex]+' · '+particleVariants[particleStyle];}
-function updateWaveHint(){document.querySelector('[data-mode="0"] .hint').textContent=waveColors[waveIndex]+' · '+waveVariants[waveStyle];}
-const padTimers={};
-function choose(n){
- if(n!==0 && n!==1 && n!==2){chooseNow(n,false);return;}
- if(padTimers[n]){clearTimeout(padTimers[n]);padTimers[n]=null;chooseNow(n,true);return;}
- padTimers[n]=setTimeout(()=>{padTimers[n]=null;chooseNow(n,false);},260);
-}
-async function chooseNow(n,doubleTap){try{
-showRandom(false);
-if(n===0 || n===1 || n===2){
+function updateVUHint(){document.querySelector('[data-mode="1"] .hint').textContent=vuStyle?'CENTER':'NORMAL';}
+function updateParticleHint(){document.querySelector('[data-mode="2"] .hint').textContent=particleVariants[particleStyle];}
+function updateWaveHint(){document.querySelector('[data-mode="0"] .hint').textContent=waveVariants[waveStyle];}
+// v2.1 step 1: single taps only. Active mode cycles its variant; colors remain unchanged.
+async function choose(n){try{
+ showRandom(false);
  const already=active===n;
  let url='/api/mode?value='+n;
- if(already)url=n===0?(doubleTap?'/api/wave-variant':'/api/wave-color'):n===1?(doubleTap?'/api/vu-variant':'/api/color'):(doubleTap?'/api/particle-variant':'/api/comet-color');
+ if(already && n===0)url='/api/wave-variant';
+ else if(already && n===1)url='/api/vu-variant';
+ else if(already && n===2)url='/api/particle-variant';
+ // ENERGY cycles flashes through /api/mode. BPM and FIRE have no variant to cycle.
  const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw Error();
- if(already){if(n===0){if(doubleTap)waveStyle=(waveStyle+1)%4;else waveIndex=(waveIndex+1)%6;}
- else if(n===1){if(doubleTap)vuStyle=1-vuStyle;else vuIndex=(vuIndex+1)%vuColors.length;}
- else {if(doubleTap)particleStyle=(particleStyle+1)%6;else particleIndex=(particleIndex+1)%6;}}
- highlight(n);updateVUHint();updateWaveHint();updateParticleHint();return;
-}
-const vuCycle=(n===1&&active===1);
-const cometCycle=false;
-const bpmCycle=(n===3&&active===3);
-const energyCycle=(n===4&&active===4);
-const url=vuCycle?'/api/color':cometCycle?'/api/comet-color':bpmCycle?'/api/bpm-color':'/api/mode?value='+n;
-const r=await fetch(url,{cache:'no-store'});
-if(!r.ok)throw Error();if(vuCycle)vuIndex=(vuIndex+1)%vuColors.length;
-if(cometCycle)particleIndex=(particleIndex+1)%particleColors.length;
-if(bpmCycle)bpmColorIndex=(bpmColorIndex+1)%bpmColors.length;
-if(energyCycle)energyCount=energyCount%4+1;
-highlight(n);updateVUHint();updateParticleHint();
-document.querySelector('[data-mode="3"] .hint').textContent=bpmColors[bpmColorIndex];
-document.querySelector('[data-mode="4"] .hint').textContent=energyCount+' FLASH'+(energyCount===1?'':'ES');
-
+ if(already){
+   if(n===0)waveStyle=(waveStyle+1)%waveVariants.length;
+   else if(n===1)vuStyle=1-vuStyle;
+   else if(n===2)particleStyle=(particleStyle+1)%particleVariants.length;
+   else if(n===4)energyCount=energyCount%4+1;
+ }
+ highlight(n);updateVUHint();updateWaveHint();updateParticleHint();
+ document.querySelector('[data-mode="3"] .hint').textContent='BPM AUTO';
+ document.querySelector('[data-mode="4"] .hint').textContent=energyCount+' FLASH'+(energyCount===1?'':'ES');
+ document.querySelector('[data-mode="5"] .hint').textContent='FIRE & SPARKS';
 }catch(e){console.warn('Ingen kontakt med MusicLED',e);}}
-highlight(active);updateVUHint();updateWaveHint();updateParticleHint();document.querySelector('[data-mode="4"] .hint').textContent=energyCount+' FLASH'+(energyCount===1?'':'ES');
+highlight(active);updateVUHint();updateWaveHint();updateParticleHint();
+document.querySelector('[data-mode="3"] .hint').textContent='BPM AUTO';
+document.querySelector('[data-mode="4"] .hint').textContent=energyCount+' FLASH'+(energyCount===1?'':'ES');
+document.querySelector('[data-mode="5"] .hint').textContent='FIRE & SPARKS';
 async function refreshBPM(){try{const r=await fetch('/api/bpm',{cache:'no-store'});if(!r.ok)return;const d=await r.json();document.getElementById('bpmDisplay').textContent=d.bpm>0?Math.round(d.bpm)+' BPM':'-- BPM';document.getElementById('bpmSource').textContent=d.manual?'MANUAL':'AUTO';document.getElementById('tapBpm').textContent=d.bpm>0?Math.round(d.bpm)+' BPM':'-- BPM';}catch(e){}}
 refreshBPM();syncRandom();setInterval(refreshBPM,3000);setInterval(syncRandom,2000);
 </script></body></html>)HTML");
