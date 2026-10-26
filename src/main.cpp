@@ -19,11 +19,11 @@ static const uint8_t MUSICLED_ICON_PNG[] = {0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0
 
 // Runtime-configurable LED strip. MAX_LEDS reserves storage for effects.
 static const uint16_t MAX_LEDS = 300;
-static const uint16_t DEFAULT_NUM_LEDS = 68;
+static const uint16_t DEFAULT_NUM_LEDS = 62;
 static const uint8_t DEFAULT_LED_PIN = 1;
 uint16_t NUM_LEDS = DEFAULT_NUM_LEDS;
 uint8_t ledPin = DEFAULT_LED_PIN;
-#define BRIGHTNESS 60
+#define BRIGHTNESS 150
 
 #define SAMPLE_RATE 16000
 #define SAMPLES 512
@@ -2682,7 +2682,7 @@ h1{font-size:23px;letter-spacing:.04em;margin:0}.sub{font-size:12px;color:#8e9db
 <label><input type="radio" name="bpmMode" id="manualMode" onchange="fetch('/api/bpm-mode?manual=1')"> MANUAL</label>
 <div class="tapBox"><div id="tapBpm">-- BPM</div><button type="button" class="tapButton" onclick="tap()">TAP BEAT</button><button type="button" onclick="fetch('/api/tap-reset').then(refreshBPM)">Nullstill</button></div>
 <h3>LED-stripe</h3>
-<label for="ledCountInput">Antall LED (1–300)</label><input id="ledCountInput" type="number" min="1" max="300" step="1" value="68" style="width:100%;padding:10px;font:inherit;border-radius:8px">
+<label for="ledCountInput">Antall LED (1–300)</label><input id="ledCountInput" type="number" min="1" max="300" step="1" value="62" style="width:100%;padding:10px;font:inherit;border-radius:8px">
 <label for="ledPinInput">ESP32 GPIO (datapinne)</label><select id="ledPinInput" style="width:100%;padding:10px;font:inherit;border-radius:8px">
 <option value="0">GPIO0</option><option value="1" selected>GPIO1 (standard)</option><option value="2">GPIO2</option><option value="3">GPIO3</option><option value="4">GPIO4</option><option value="5">GPIO5</option><option value="6">GPIO6</option><option value="7">GPIO7</option><option value="8">GPIO8</option><option value="9">GPIO9</option><option value="10">GPIO10</option><option value="11">GPIO11</option><option value="12">GPIO12</option><option value="13">GPIO13</option><option value="14">GPIO14</option><option value="15">GPIO15</option><option value="16">GPIO16</option><option value="17">GPIO17</option><option value="18">GPIO18</option><option value="21">GPIO21</option></select>
 <p class="help">Velg kun en fysisk tilgjengelig, ledig GPIO på kortet. GPIO19/20 (USB) er utelatt. Endringer lagres og krever omstart.</p>
