@@ -1905,7 +1905,20 @@ void applyPaletteFrame(LedMode effect) {
         if (!intensity) continue;
         // Square the effect envelope: dark levels remain dark, peaks reach full color.
         const uint16_t level = ((uint32_t)intensity*intensity + 127) / 255;
-        uint16_t palettePosition = paletteReverse[(uint8_t)effect] ? (NUM_LEDS-1-i) : i;
+        // Center-origin effects use a mirrored palette: center is stop 0,
+// both ends are the last stop. Reverse swaps center and ends.
+        const bool centerOrigin =
+            (effect == VU_METER && vuCentered) ||
+            (effect == COMET_BEAT && (particleVariant == 0 || particleVariant == 1));
+        uint16_t palettePosition = i;
+        if (centerOrigin && NUM_LEDS > 1) {
+            // Integer mapping handles odd and even LED counts symmetrically.
+            const uint16_t doubledDistance = (uint16_t)abs((int)(2*i) - ((int)NUM_LEDS-1));
+            palettePosition = (uint32_t)doubledDistance * (NUM_LEDS-1) /
+                              (NUM_LEDS-1 + (NUM_LEDS%2==0 ? 1 : 0));
+            if (palettePosition >= NUM_LEDS) palettePosition = NUM_LEDS-1;
+        }
+        if (paletteReverse[(uint8_t)effect]) palettePosition = NUM_LEDS-1-palettePosition;
         uint32_t c = saturatedPaletteColor(paletteColorAt(id,palettePosition),id);
         strip.setPixelColor(i, strip.Color(
             ((c>>16)&255)*level/255,
