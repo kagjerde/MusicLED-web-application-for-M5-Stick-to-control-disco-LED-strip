@@ -2458,15 +2458,14 @@ h1{font-size:23px;letter-spacing:.04em;margin:0}.sub{font-size:12px;color:#8e9db
 .gear svg{width:25px;height:25px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 [hidden]{display:none!important}
 .gear{cursor:pointer;touch-action:manipulation}
-.paletteGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
-@media(min-width:650px){.paletteGrid{grid-template-columns:repeat(8,minmax(0,1fr))}}
-.paletteTile{border:2px solid #34445f;background:#1c2840;color:#dfeaff;border-radius:10px;padding:5px 3px;min-width:0;cursor:pointer;touch-action:manipulation}
+.paletteGrid{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:4px}
+.paletteTile{border:2px solid #34445f;background:#1c2840;color:#dfeaff;border-radius:7px;padding:3px 1px;min-width:0;cursor:pointer;touch-action:manipulation}
 .paletteTile.selected{border-color:#65dcff;box-shadow:0 0 0 1px #65dcff88}
-.paletteSwatch{display:flex;height:30px;border-radius:5px;overflow:hidden}
+.paletteSwatch{display:flex;height:23px;border-radius:4px;overflow:hidden}
 .paletteSwatch i{flex:1;min-width:0}
-.paletteLabel{display:block;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:5px}
-.paletteGroup{margin:20px 0}.paletteGroup h3{font-size:15px;margin:0 0 9px}
-.paletteHelp{color:#a9b9d4;font-size:13px}
+.paletteLabel{display:block;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}
+.paletteGroup{margin:9px 0}.paletteGroup h3{font-size:12px;margin:0 0 4px}
+.paletteHelp{color:#a9b9d4;font-size:11px;margin:6px 0}#paletteView .settingsTop{margin-bottom:6px}#paletteView .settingsTop h2{font-size:18px}#paletteView{padding-bottom:8px}
 
 #settingsView{padding:4px 2px 30px}
 .settingsTop{display:flex;align-items:center;gap:16px;margin-bottom:16px}
@@ -2490,12 +2489,10 @@ h1{font-size:23px;letter-spacing:.04em;margin:0}.sub{font-size:12px;color:#8e9db
 <button class="pad" data-mode="3" onclick="choose(3)"><span class="symbol"><svg viewBox="0 0 64 64"><path d="M9 33h11l7-16 10 31 7-15h11"/><path d="M22 9a25 25 0 1 1-13 43"/></svg></span><span class="name">BPM AUTO</span><span class="hint">WHITE</span></button>
 <button class="pad" data-mode="4" onclick="choose(4)"><span class="symbol"><svg viewBox="0 0 64 64"><path d="M36 5 14 35h16l-3 24 23-34H34z"/></svg></span><span class="name">ENERGY</span><span class="hint">STROBE</span></button>
 <button class="pad" data-mode="5" onclick="choose(5)"><span class="symbol"><svg viewBox="0 0 64 64"><path d="M34 5c4 14-6 18-3 27 6-3 9-9 10-14 19 20 15 37-8 40C10 59 8 42 18 29c1 11 7 13 9 13-5-14 0-27 7-37z"/></svg></span><span class="name">FIRE</span><span class="hint">&amp; SPARKS</span></button>
-</section><footer class="footer"><button type="button" id="randomBtn" class="randomBtn" onclick="randomPress()" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M4 7h3c5 0 5 10 10 10h3m-3-3 3 3-3 3M4 17h3c2 0 3-2 4-4m2-3c1-2 2-3 4-3h3m-3-3 3 3-3 3"/></svg><span>RANDOM</span></button><button type="button" class="gear" onclick="showPalettes()" aria-label="Fargepaletter" title="Fargepaletter"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 3v18M3 12h18M5.5 5.5l13 13M18.5 5.5l-13 13" stroke="currentColor" stroke-width="1.5"/></svg></button><button type="button" class="gear" onclick="showSettings()" aria-label="Innstillinger"><svg viewBox="0 0 24 24"><path d="M10 2h4l.8 2.6 2 .9 2.4-1.2 2.8 2.8-1.2 2.4.9 2L24 12l-2.3 1.5-.9 2 1.2 2.4-2.8 2.8-2.4-1.2-2 .9L14 23h-4l-.8-2.6-2-.9-2.4 1.2L2 17.9l1.2-2.4-.9-2L0 12l2.3-1.5.9-2L2 6.1l2.8-2.8 2.4 1.2 2-.9z" transform="translate(1 1) scale(.91)"/><circle cx="12" cy="12" r="3"/></svg></button></footer></section>
+</section><footer class="footer"><button type="button" id="randomBtn" class="randomBtn" onclick="randomPress()" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M4 7h3c5 0 5 10 10 10h3m-3-3 3 3-3 3M4 17h3c2 0 3-2 4-4m2-3c1-2 2-3 4-3h3m-3-3 3 3-3 3"/></svg><span>RANDOM</span></button><button type="button" class="gear" onclick="showPalettes()" aria-label="Fargepaletter" title="Fargepaletter"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 20a10 10 0 0 1 20 0" stroke="#f44" stroke-width="3" fill="none"/><path d="M5 20a7 7 0 0 1 14 0" stroke="#ffb733" stroke-width="3" fill="none"/><path d="M8 20a4 4 0 0 1 8 0" stroke="#3edc83" stroke-width="3" fill="none"/><path d="M11 20a1 1 0 0 1 2 0" stroke="#559bff" stroke-width="2" fill="none"/></svg></button><button type="button" class="gear" onclick="showSettings()" aria-label="Innstillinger"><svg viewBox="0 0 24 24"><path d="M10 2h4l.8 2.6 2 .9 2.4-1.2 2.8 2.8-1.2 2.4.9 2L24 12l-2.3 1.5-.9 2 1.2 2.4-2.8 2.8-2.4-1.2-2 .9L14 23h-4l-.8-2.6-2-.9-2.4 1.2L2 17.9l1.2-2.4-.9-2L0 12l2.3-1.5.9-2L2 6.1l2.8-2.8 2.4 1.2 2-.9z" transform="translate(1 1) scale(.91)"/><circle cx="12" cy="12" r="3"/></svg></button></footer></section>
 <section id="paletteView" hidden>
 <header class="settingsTop"><button type="button" onclick="showHome()">← Tilbake</button><h2>Fargepaletter</h2></header>
-<p class="paletteHelp" id="paletteModeName">Velg palett for aktiv effekt.</p>
-<p class="paletteHelp">De fire første palettene overstyrer alle effekter midlertidig, uten å lagres. Øvrige valg lagres for den aktive effekten. Fargene påvirker ikke LED-stripen før steg 2B.</p>
-<div id="paletteGroups"></div><p class="paletteHelp" id="paletteStatus"></p>
+<div id="paletteGroups"></div><p class="paletteHelp" id="paletteModeName">Velg palett for aktiv effekt.</p><p class="paletteHelp" id="paletteStatus"></p><p class="paletteHelp">De fire første palettene er midlertidige globale valg. Andre valg lagres per effekt. LED-fargene aktiveres i steg 2B.</p>
 </section>
 <section id="settingsView" hidden>
 <header class="settingsTop"><button type="button" onclick="showHome()">← Tilbake</button><h2>Innstillinger</h2></header>
@@ -2616,7 +2613,7 @@ function renderPalettes(){
  const defaultGroup=document.createElement('section');defaultGroup.className='paletteGroup';
  defaultGroup.innerHTML='<h3>Standard</h3>';
  const defaultBtn=document.createElement('button');defaultBtn.className='paletteTile'+(paletteTemporary<0&&paletteSaved[active]===0?' selected':'');
- defaultBtn.textContent='DEFAULT · effektens opprinnelige farger';defaultBtn.onclick=()=>savePalette(0);defaultGroup.appendChild(defaultBtn);root.appendChild(defaultGroup);
+ defaultBtn.textContent='DEFAULT';defaultBtn.onclick=()=>savePalette(0);defaultGroup.appendChild(defaultBtn);root.appendChild(defaultGroup);
  paletteGroups.forEach((group,g)=>{
  const section=document.createElement('section');section.className='paletteGroup';
  const title=document.createElement('h3');title.textContent=group[0];section.appendChild(title);
