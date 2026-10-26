@@ -1092,7 +1092,7 @@ float medianBPMInterval() {
 void acceptBPMOnset(uint32_t onsetTime) {
     if (!audioIsActive) return;
     bpmDetectedBeats++;
-    if (mode == COMET_BEAT) particleOnsetCount++; // Every detected peak triggers explosion/diffusion.
+    particleOnsetCount++; // Raw bass peaks remain available through Random transitions.
 
     if (lastBPMOnset != 0) {
         float rawInterval =
@@ -1262,7 +1262,7 @@ void updateBPMDetector(
 // =====================================================
 
 void updateBPMClock() {
-    if (mode != BPM_AUTO && mode != COMET_BEAT && !(mode == RAINBOW_MUSIC && waveVariant != 0)) return;
+    // Maintain a continuous beat clock regardless of the selected effect.
     uint32_t now = millis();
     // Silence gates beat output even when using manual tempo.
     if (!audioIsActive) {
@@ -1280,7 +1280,7 @@ void updateBPMClock() {
             nextBPMFlash
         )
     ) {
-        requestFlash(FLASH_SINGLE);
+        if (mode == BPM_AUTO) requestFlash(FLASH_SINGLE);
 
         bpmFlashCount++;
 
@@ -1709,7 +1709,7 @@ void updateWaveRunners() {
         uint32_t beats=bpmFlashCount-waveLastBeat;
         waveLastBeat=bpmFlashCount;
         if (audioIsActive) for(uint32_t j=0;j<min(beats,(uint32_t)WAVE_RUNNERS);j++) {
-            int dir = waveVariant==1 ? 1 : waveVariant==2 ? -1 : ((waveBeatSerial++ & 1) ? -1 : 1);
+            int dir = waveVariant==1 ? -1 : waveVariant==2 ? 1 : ((waveBeatSerial++ & 1) ? -1 : 1);
             waveStarts[waveWrite]=now ? now : 1;
             waveDirections[waveWrite]=dir;
             waveWrite=(waveWrite+1)%WAVE_RUNNERS;
@@ -1859,31 +1859,47 @@ void updateFireSparks() {
         fireHeat[y] = (uint8_t)min(255L, (long)fireHeat[y] + random(150, 256));
     }
 
-    // Sparse music-reactive sparks, decaying independently of the fire.
-    static uint8_t spark[MAX_LEDS] = {};
-    float activity = constrain((signalRms - 250.0f) / 4500.0f * dynamicsFactor(), 0.0f, 1.0f);
-    for (int i = 0; i < NUM_LEDS; ++i) {
-        // 30ms frame, ~0.4-0.8 second fade-out.
-        uint8_t fade = (uint8_t)random(10, 20);
-        spark[i] = spark[i] > fade ? spark[i] - fade : 0;
-    }
-    // Minimum sparkle even with quiet music; louder music adds sparks.
-    int sparkChance = (int)(18.0f + activity * 160.0f * dynamicsFactor());
-    if (random(1000) < sparkChance) {
-        spark[random(NUM_LEDS)] = 255;
-    }
+    // Sparks are drawn independently after the palette.
+
     for (int i = 0; i < NUM_LEDS; ++i) {
         uint8_t h = fireHeat[i];
         uint8_t r = (uint8_t)min(255, (int)h * 3);
         uint8_t g = (h < 90) ? 0 : (uint8_t)min(210, ((int)h - 90) * 2);
         uint8_t b = (h > 210) ? (uint8_t)((h - 210) / 3) : 0;
-        if (spark[i]) {
-            uint8_t a = spark[i];
-            r = max(r, a);
-            g = max(g, (uint8_t)((int)a * 92 / 100));
-            b = max(b, (uint8_t)((int)a * 68 / 100));
-        }
         strip.setPixelColor(i, strip.Color(r, g, b));
+    }
+}
+
+// Music-reactive glitter overlay: survives palette conversion.
+void drawFireGlitter() {
+    static uint32_t born[MAX_LEDS] = {};
+    static uint16_t lifetime[MAX_LEDS] = {};
+    static uint32_t lastBassOnset = 0;
+    const uint32_t now = millis();
+    const float activity = constrain((signalRms - 250.0f) / 4500.0f * dynamicsFactor(), 0.0f, 1.0f);
+    const uint32_t bassNow = particleOnsetCount;
+    uint32_t newBeats = bassNow - lastBassOnset;
+    lastBassOnset = bassNow;
+    if (newBeats > 3) newBeats = 3;
+    const int count = (random(1000) < (int)(65 + 300 * activity)) ? 1 : 0;
+    const int burst = audioIsActive ? (int)newBeats * 3 : 0;
+    for (int j = 0; j < count + burst; ++j) {
+        int i = random(NUM_LEDS);
+        born[i] = now ? now : 1;
+        lifetime[i] = random(800, 1201);
+    }
+    for (int i = 0; i < NUM_LEDS; ++i) {
+        if (!born[i]) continue;
+        uint32_t age = now - born[i];
+        if (age >= lifetime[i]) { born[i] = 0; continue; }
+        uint8_t pulse = ((age / 130) % 2 == 0) ? 255 : 90;
+        uint8_t fade = (uint32_t)(lifetime[i] - age) * 255 / lifetime[i];
+        uint8_t level = (uint16_t)pulse * fade / 255;
+        uint32_t old = strip.getPixelColor(i);
+        uint8_t r = max((int)((old >> 16) & 255), (int)level);
+        uint8_t g = max((int)((old >> 8) & 255), (int)((uint16_t)level * 94 / 100));
+        uint8_t b = max((int)(old & 255), (int)((uint16_t)level * 75 / 100));
+        strip.setPixelColor(i, strip.Color(r,g,b));
     }
 }
 
@@ -2229,6 +2245,7 @@ void ledTask(void* parameter) {
                 }
 
                 applyPaletteFrame(currentMode);
+                if(currentMode==FIRE_SPARKS)drawFireGlitter();
                 if(currentMode==VU_METER)drawVUPeakDot();
                 strip.show();
             }
@@ -2678,7 +2695,7 @@ static void updateRandomPlay(uint32_t now) {
 void applyModeChange(LedMode newMode) {
     if (newMode == mode) return;
     clearFlashSchedule();
-    resetBPM();
+    // Keep BPM history and beat phase across effect changes.
     resetEnergy();
     vuPeak = 0.0f;
     vuPeakColorLevel = 0.0f;
@@ -2750,7 +2767,7 @@ h1{font-size:23px;letter-spacing:.04em;margin:0}.sub{font-size:12px;color:#8e9db
 .gear{border:1px solid #38455f;background:#202a40;color:white;width:100%;height:52px;border-radius:15px;display:grid;place-items:center;text-decoration:none}
 .gear svg{width:25px;height:25px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 [hidden]{display:none!important}
-.gear{cursor:pointer;touch-action:manipulation}#paletteReverseButton{border:1px solid #38455f;background:#202a40;color:#d9e8ff;min-height:52px;padding:0 16px;border-radius:14px;font:600 12px system-ui;letter-spacing:.03em;cursor:pointer;touch-action:manipulation}#paletteReverseButton:active{background:#174a68}
+.gear{cursor:pointer;touch-action:manipulation}#paletteActions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}#paletteActions button{width:100%;min-width:0}#paletteDefaultButton,#paletteReverseButton{border:1px solid #38455f;background:#202a40;color:#d9e8ff;min-height:52px;padding:0 16px;border-radius:14px;font:600 12px system-ui;letter-spacing:.03em;cursor:pointer;touch-action:manipulation}#paletteDefaultButton:active,#paletteReverseButton:active{background:#174a68}
 .paletteGrid{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:4px}
 .paletteTile{border:2px solid #2366b9;background:#2366b9;color:#fff;border-radius:7px;padding:3px 1px;min-width:0;cursor:pointer;touch-action:manipulation}
 .paletteTile.selected{border-color:#8edcff;box-shadow:0 0 0 2px #8edcff99}
@@ -2785,7 +2802,7 @@ h1{font-size:23px;letter-spacing:.04em;margin:0}.sub{font-size:12px;color:#8e9db
 </section><footer class="footer"><button type="button" id="randomBtn" class="randomBtn" onclick="randomPress()" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M4 7h3c5 0 5 10 10 10h3m-3-3 3 3-3 3M4 17h3c2 0 3-2 4-4m2-3c1-2 2-3 4-3h3m-3-3 3 3-3 3"/></svg><span>RANDOM</span></button><button type="button" class="gear" onclick="showPalettes()" aria-label="Fargepaletter" title="Fargepaletter"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.3 16.7 18.8 2.3c.6-.8 1.5-.8 2-.3s.5 1.3-.1 2.1L9.2 18.4Z"/><path d="m6.8 16.4-1.7 1.7c-1.3-.1-2.8.6-3.3 2.1-.3.8-.7 1.3-1.1 1.7 3.2 1 6.3.4 8-2.3l.7-1.4"/><path d="m6.7 15.9 2.9 2.7"/></svg></button><button type="button" class="gear" onclick="showSettings()" aria-label="Innstillinger"><svg viewBox="0 0 24 24"><path d="M10 2h4l.8 2.6 2 .9 2.4-1.2 2.8 2.8-1.2 2.4.9 2L24 12l-2.3 1.5-.9 2 1.2 2.4-2.8 2.8-2.4-1.2-2 .9L14 23h-4l-.8-2.6-2-.9-2.4 1.2L2 17.9l1.2-2.4-.9-2L0 12l2.3-1.5.9-2L2 6.1l2.8-2.8 2.4 1.2 2-.9z" transform="translate(1 1) scale(.91)"/><circle cx="12" cy="12" r="3"/></svg></button></footer></section>
 <section id="paletteView" hidden>
 <header class="settingsTop"><button type="button" onclick="showHome()">← Tilbake</button><h2>Fargepaletter</h2></header>
-<div id="paletteGroups"></div><p class="paletteHelp" id="paletteModeName">Velg palett for aktiv effekt.</p><p><button type="button" id="paletteReverseButton" onclick="togglePaletteReverse()">⇅ Snu fargeretning</button></p><p class="paletteHelp" id="paletteStatus"></p><p class="paletteHelp">De fire første palettene er midlertidige globale valg. Andre valg lagres per effekt. LED-fargene aktiveres i steg 2B.</p>
+<div id="paletteGroups"></div><p class="paletteHelp" id="paletteModeName">Velg palett for aktiv effekt.</p><div id="paletteActions"><button type="button" id="paletteDefaultButton" onclick="savePalette(0)">Default</button><button type="button" id="paletteReverseButton" onclick="togglePaletteReverse()">⇅ Reverser</button></div><p class="paletteHelp" id="paletteStatus"></p><p class="paletteHelp">De åtte første palettene er midlertidige globale valg. Andre valg lagres per effekt.</p>
 </section>
 <section id="settingsView" hidden>
 <header class="settingsTop"><button type="button" onclick="showHome()">← Tilbake</button><h2>Innstillinger</h2></header>
@@ -2839,7 +2856,7 @@ let particleIndex=)HTML");
 let bpmStyle=0;
 let randomEnabled=false;
 function showRandom(enabled){randomEnabled=enabled;const b=document.getElementById('randomBtn');b.classList.toggle('on',enabled);b.setAttribute('aria-pressed',String(enabled));}
-async function syncRandom(){try{const r=await fetch('/api/random-state',{cache:'no-store'});if(!r.ok)return;const d=await r.json();showRandom(d.enabled);highlight(d.mode);waveStyle=d.waveVariant;waveIndex=d.waveColor;vuStyle=d.vuCentered?1:0;vuIndex=d.vuColor;particleStyle=d.particleVariant;particleIndex=d.particleColor;bpmColorIndex=d.bpmColor;energyCount=d.energyFlashes;updateVUHint();updateWaveHint();updateParticleHint();document.querySelector('[data-mode="3"] .hint').textContent=bpmStyle?'HOLD':'BLINK';document.querySelector('[data-mode="4"] .hint').textContent=energyCount+' FLASH'+(energyCount===1?'':'ES');}catch(e){}}
+async function syncRandom(){try{const r=await fetch('/api/random-state',{cache:'no-store'});if(!r.ok)return;const d=await r.json();showRandom(d.enabled);highlight(d.mode);waveStyle=d.waveVariant;waveIndex=d.waveColor;vuStyle=d.vuCentered?1:0;vuIndex=d.vuColor;particleStyle=d.particleVariant;particleIndex=d.particleColor;bpmColorIndex=d.bpmColor;energyCount=d.energyFlashes;updateVUHint();updateWaveHint();updateParticleHint();document.querySelector('[data-mode="3"] .hint').textContent=bpmColors[bpmColorIndex];document.querySelector('[data-mode="4"] .hint').textContent=energyCount+' FLASH'+(energyCount===1?'':'ES');}catch(e){}}
 async function randomPress(){try{const r=await fetch('/api/random-next',{cache:'no-store'});if(r.ok)await syncRandom();}catch(e){}}
 function showSettings(){
  document.getElementById('homeBpm').hidden=true;
@@ -2913,14 +2930,11 @@ const paletteNames=['WAVE','VU METER','PARTICLES','BPM AUTO','ENERGY','FIRE'];
 function renderPalettes(){
  const root=document.getElementById('paletteGroups');root.replaceChildren();
  const reverseButton=document.getElementById('paletteReverseButton');
- reverseButton.textContent=paletteReversed[active]?'⇅ Reversert · trykk for normal':'⇅ Normal · trykk for reversering';
+ reverseButton.textContent=paletteReversed[active]?'⇅ Reversert':'⇅ Reverser';
+ document.getElementById('paletteDefaultButton').setAttribute('aria-pressed',String(paletteTemporary<0&&paletteSaved[active]===0));
  document.getElementById('paletteModeName').textContent='Aktiv effekt: '+paletteNames[active]+' · Lagret: '+(paletteSaved[active]===0?'DEFAULT':paletteLabel(paletteSaved[active]));
  let id=1;
  const paletteIds=[[1,2,3,4,33,34,35,36],[5,6,7,8,37,38,39,40],Array.from({length:8},(_,i)=>9+i),Array.from({length:8},(_,i)=>17+i),Array.from({length:8},(_,i)=>25+i)];
- const defaultGroup=document.createElement('section');defaultGroup.className='paletteGroup';
- defaultGroup.innerHTML='<h3>Standard</h3>';
- const defaultBtn=document.createElement('button');defaultBtn.className='paletteTile'+(paletteTemporary<0&&paletteSaved[active]===0?' selected':'');
- defaultBtn.textContent='DEFAULT';defaultBtn.onclick=()=>savePalette(0);defaultGroup.appendChild(defaultBtn);root.appendChild(defaultGroup);
  paletteGroups.forEach((group,g)=>{
  const section=document.createElement('section');section.className='paletteGroup';
  const title=document.createElement('h3');title.textContent=group[0];section.appendChild(title);
@@ -3006,12 +3020,12 @@ async function choose(n){try{
    else if(n===4)energyCount=energyCount%4+1;
  }
  highlight(n);updateVUHint();updateWaveHint();updateParticleHint();
- document.querySelector('[data-mode="3"] .hint').textContent='BPM AUTO';
+ document.querySelector('[data-mode="3"] .hint').textContent=bpmColors[bpmColorIndex];
  document.querySelector('[data-mode="4"] .hint').textContent=energyCount+' FLASH'+(energyCount===1?'':'ES');
  document.querySelector('[data-mode="5"] .hint').textContent='FIRE & SPARKS';
 }catch(e){console.warn('Ingen kontakt med MusicLED',e);}}
 highlight(active);updateVUHint();updateWaveHint();updateParticleHint();
-document.querySelector('[data-mode="3"] .hint').textContent='BPM AUTO';
+document.querySelector('[data-mode="3"] .hint').textContent=bpmColors[bpmColorIndex];
 document.querySelector('[data-mode="4"] .hint').textContent=energyCount+' FLASH'+(energyCount===1?'':'ES');
 document.querySelector('[data-mode="5"] .hint').textContent='FIRE & SPARKS';
 async function refreshBPM(){try{const r=await fetch('/api/bpm',{cache:'no-store'});if(!r.ok)return;const d=await r.json();document.getElementById('bpmDisplay').textContent=d.bpm>0?Math.round(d.bpm)+' BPM':'-- BPM';document.getElementById('bpmSource').textContent=d.manual?'MANUAL':'AUTO';document.getElementById('tapBpm').textContent=d.bpm>0?Math.round(d.bpm)+' BPM':'-- BPM';}catch(e){}}
@@ -3540,9 +3554,7 @@ void loop() {
         updatePeak();
     }
 
-    if (mode == BPM_AUTO || mode == COMET_BEAT || (mode == RAINBOW_MUSIC && waveVariant != 0)) {
-        updateBPMClock();
-    }
+    updateBPMClock();
 
     uint32_t now = millis();
 
