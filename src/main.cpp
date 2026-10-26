@@ -83,7 +83,8 @@ volatile bool requestedBPMColor = false;
 volatile uint8_t dynamicsPercent = 50;  // 50% = original response
 volatile bool manualBPM = false;
 volatile float manualBPMValue = 120.0f;
-volatile uint8_t bpmColorVariant = 0;  // 0 white, 1 red/blue, 2 rainbow
+volatile uint8_t bpmColorVariant = 0;  // legacy default coloring
+volatile uint8_t bpmDisplayVariant = 0; // 0 blink, 1 hold until next beat
 uint32_t tapTimes[6] = {};
 uint8_t tapCount = 0;
 uint32_t lastTapTime = 0;
@@ -443,11 +444,11 @@ void updateParticles(){
    if(particleRocketVel<=0 || particleRocket>=NUM_LEDS-2){
      rocketActive=false;
      // The explosion happens after launch, not necessarily on the next beat.
-     const int fragments=random(8,17);
+     const int fragments=random(6,11);
       const float spread=0.65f+random(75)*.01f;
       for(int k=0;k<fragments;k++){
-        const float velocity=(random(2)?1.0f:-1.0f)*(8.0f+random(16,49)*spread);
-        particleSpawn(particleRocket,velocity,0.85f+random(50)*.01f,5,
+        const float velocity=(random(2)?1.0f:-1.0f)*(12.0f+random(12,28)*spread);
+        particleSpawn(particleRocket,velocity,0.70f+random(20)*.01f,5,
                       (uint16_t)(particleRocketHue+random(65536)));
       }
    }
@@ -479,7 +480,7 @@ void updateParticles(){
      if(p.pos<0||p.pos>=NUM_LEDS){p.active=false;continue;}
      p.life-=dt*.7f;
      if(p.life<=0){p.active=false;continue;}
-     for(int k=0;k<5;k++)particleAdd((int)(p.pos-k*(p.vel>0?1:-1)),particleRGB(p.hue,(uint8_t)(190*p.life/(1+k))));
+     for(int k=0;k<6;k++)particleAdd((int)(p.pos-k*(p.vel>0?1:-1)),particleRGB(p.hue,(uint8_t)(255*p.life*(1.0f-.14f*k))));
    }else if(p.type==4||p.type==5){
      // Gravity, in LED units per second squared. Balls bounce with energy loss.
      p.pos+=p.vel*dt;p.vel-=55.0f*dt;
@@ -489,8 +490,13 @@ void updateParticles(){
        if(p.type==4&&fabsf(p.vel)>9)p.vel=-p.vel*.63f;
        else {p.active=false;continue;}
      }
-     if(p.type==5){p.life-=dt*.65f;if(p.life<=0){p.active=false;continue;}}
-     uint8_t v=(uint8_t)(235*(p.type==4?1.0f:p.life));
+     if(p.type==5){
+       // Fragments travel at most 20-30 LEDs from the burst, then disappear.
+       if (fabsf(p.pos-particleRocket)>25.0f) {p.active=false;continue;}
+       p.life-=dt*1.25f;
+       if(p.life<=0){p.active=false;continue;}
+     }
+     uint8_t v=(uint8_t)(255*(p.type==4?1.0f:p.life));
      particleAdd((int)roundf(p.pos),particleRGB(p.hue,v));
      if(p.type==5)particleAdd((int)roundf(p.pos-p.vel*.03f),particleRGB(p.hue,v/3));
    }
@@ -1842,6 +1848,16 @@ static const uint32_t palettes2[][2] = {
 };
 
 // One continuous gradient from bottom to top; no repeated patterns.
+uint8_t paletteStopCount(uint8_t id) {return id<=7?8:id<=16?4:id<=24?1:2;}
+uint32_t paletteStopColor(uint8_t id,uint32_t beat) {
+    if(id<1||id>32) return strip.Color(255,255,255);
+    uint8_t count=paletteStopCount(id);
+    uint8_t index=(uint8_t)(beat%count);
+    if(id<=7)return palettes8[id-1][index];
+    if(id<=16)return palettes4[id-8][index];
+    if(id<=24)return palettes1[id-17][0];
+    return palettes2[id-25][index];
+}
 uint32_t paletteColorAt(uint8_t id, uint16_t position) {
     if (id < 1 || id > 32) return 0;
     const uint32_t* colors;
@@ -1993,14 +2009,20 @@ void ledTask(void* parameter) {
 
             portEXIT_CRITICAL(&ledMux);
 
-            if (currentMode == BPM_AUTO && bpmColorVariant != 0 && bpmFlashCount > 0) {
+            if (currentMode == BPM_AUTO && bpmDisplayVariant == 1 && bpmFlashCount > 0) {
+                shouldBeOn = true;
+            }
+            if (currentMode == BPM_AUTO && bpmColorVariant != 0 && bpmFlashCount > 0 && activePalette(BPM_AUTO)==0) {
                 shouldBeOn = true;  // hold last red/blue or rainbow color in silence
             }
             static uint32_t lastShownBeat = 0;
             static uint8_t lastShownVariant = 255;
-            bool colorChanged = (currentMode == BPM_AUTO && bpmColorVariant != 0 &&
+            bool colorChanged = (currentMode == BPM_AUTO && (bpmDisplayVariant==1 || bpmColorVariant != 0) &&
                 (lastShownBeat != bpmFlashCount || lastShownVariant != bpmColorVariant));
-            if (shouldBeOn != outputOn || colorChanged || paletteChanged) {
+            static uint8_t lastDisplayVariant=255;
+            bool displayChanged=lastDisplayVariant!=bpmDisplayVariant;
+            lastDisplayVariant=bpmDisplayVariant;
+            if (shouldBeOn != outputOn || colorChanged || paletteChanged || displayChanged) {
                 outputOn = shouldBeOn;
                 lastShownBeat = bpmFlashCount;
                 lastShownVariant = bpmColorVariant;
@@ -2029,7 +2051,11 @@ void ledTask(void* parameter) {
                     }
                 }
 
-                applyPaletteFrame(currentMode);
+                if(currentMode==BPM_AUTO && activePalette(BPM_AUTO)>0 && outputOn){
+                    uint8_t id=activePalette(BPM_AUTO);
+                    uint32_t c=saturatedPaletteColor(paletteStopColor(id,bpmFlashCount>0?bpmFlashCount-1:0),id);
+                    for(int i=0;i<NUM_LEDS;i++)strip.setPixelColor(i,c);
+                }else applyPaletteFrame(currentMode);
                 strip.show();
             }
         }
@@ -2665,9 +2691,10 @@ let energyCount=)HTML");
 let particleIndex=)HTML");
     h += String((int)particleColor);
     h += F(R"HTML(;
+let bpmStyle=0;
 let randomEnabled=false;
 function showRandom(enabled){randomEnabled=enabled;const b=document.getElementById('randomBtn');b.classList.toggle('on',enabled);b.setAttribute('aria-pressed',String(enabled));}
-async function syncRandom(){try{const r=await fetch('/api/random-state',{cache:'no-store'});if(!r.ok)return;const d=await r.json();showRandom(d.enabled);highlight(d.mode);waveStyle=d.waveVariant;waveIndex=d.waveColor;vuStyle=d.vuCentered?1:0;vuIndex=d.vuColor;particleStyle=d.particleVariant;particleIndex=d.particleColor;bpmColorIndex=d.bpmColor;energyCount=d.energyFlashes;updateVUHint();updateWaveHint();updateParticleHint();document.querySelector('[data-mode="3"] .hint').textContent='BPM AUTO';document.querySelector('[data-mode="4"] .hint').textContent=energyCount+' FLASH'+(energyCount===1?'':'ES');}catch(e){}}
+async function syncRandom(){try{const r=await fetch('/api/random-state',{cache:'no-store'});if(!r.ok)return;const d=await r.json();showRandom(d.enabled);highlight(d.mode);waveStyle=d.waveVariant;waveIndex=d.waveColor;vuStyle=d.vuCentered?1:0;vuIndex=d.vuColor;particleStyle=d.particleVariant;particleIndex=d.particleColor;bpmColorIndex=d.bpmColor;energyCount=d.energyFlashes;updateVUHint();updateWaveHint();updateParticleHint();document.querySelector('[data-mode="3"] .hint').textContent=bpmStyle?'HOLD':'BLINK';document.querySelector('[data-mode="4"] .hint').textContent=energyCount+' FLASH'+(energyCount===1?'':'ES');}catch(e){}}
 async function randomPress(){try{const r=await fetch('/api/random-next',{cache:'no-store'});if(r.ok)await syncRandom();}catch(e){}}
 function showSettings(){
  document.getElementById('paletteView').hidden=true;
@@ -2812,12 +2839,14 @@ async function choose(n){try{
  if(already && n===0)url='/api/wave-variant';
  else if(already && n===1)url='/api/vu-variant';
  else if(already && n===2)url='/api/particle-variant';
- // ENERGY cycles flashes through /api/mode. BPM and FIRE have no variant to cycle.
+ else if(already && n===3)url='/api/bpm-variant';
+ // ENERGY cycles flashes through /api/mode. FIRE has no variant.
  const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw Error();
  if(already){
    if(n===0)waveStyle=(waveStyle+1)%waveVariants.length;
    else if(n===1)vuStyle=1-vuStyle;
    else if(n===2)particleStyle=(particleStyle+1)%particleVariants.length;
+   else if(n===3)bpmStyle=1-bpmStyle;
    else if(n===4)energyCount=energyCount%4+1;
  }
  highlight(n);updateVUHint();updateWaveHint();updateParticleHint();
@@ -3082,6 +3111,12 @@ void beginWiFi() {
     });
     webServer.on("/api/particle-variant", HTTP_GET, []() {
         randomPlay = false; requestedParticleVariant=true; webServer.send(200,"text/plain","OK"); });
+    webServer.on("/api/bpm-variant", HTTP_GET, []() {
+        randomPlay=false;
+        bpmDisplayVariant=1-bpmDisplayVariant;
+        paletteRevision++;
+        webServer.send(200,"text/plain","OK");
+    });
     webServer.on("/api/bpm-color", HTTP_GET, []() {
         randomPlay = false;
         requestedBPMColor = true;
