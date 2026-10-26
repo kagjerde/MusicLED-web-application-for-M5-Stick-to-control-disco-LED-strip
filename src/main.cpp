@@ -2322,6 +2322,11 @@ WebServer webServer(80);
 DNSServer dnsServer;
 Preferences wifiPreferences;
 Preferences ledPreferences;
+Preferences palettePreferences;
+// v2.1 step 2A: palette selections only; LED rendering remains unchanged.
+uint8_t effectPalette[6] = {0,0,0,0,0,0}; // 0 = DEFAULT, 5..32 = stored palette
+int8_t temporaryGlobalPalette = -1; // -1 = off; 1..4 = temporary global override
+
 
 const char* SETUP_SSID = "MusicLED-Setup";
 const char* SETUP_PASSWORD = "MusicLED123"; // Change before regular use (8+ chars)
@@ -2453,6 +2458,16 @@ h1{font-size:23px;letter-spacing:.04em;margin:0}.sub{font-size:12px;color:#8e9db
 .gear svg{width:25px;height:25px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 [hidden]{display:none!important}
 .gear{cursor:pointer;touch-action:manipulation}
+.paletteGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+@media(min-width:650px){.paletteGrid{grid-template-columns:repeat(8,minmax(0,1fr))}}
+.paletteTile{border:2px solid #34445f;background:#1c2840;color:#dfeaff;border-radius:10px;padding:5px 3px;min-width:0;cursor:pointer;touch-action:manipulation}
+.paletteTile.selected{border-color:#65dcff;box-shadow:0 0 0 1px #65dcff88}
+.paletteSwatch{display:flex;height:30px;border-radius:5px;overflow:hidden}
+.paletteSwatch i{flex:1;min-width:0}
+.paletteLabel{display:block;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:5px}
+.paletteGroup{margin:20px 0}.paletteGroup h3{font-size:15px;margin:0 0 9px}
+.paletteHelp{color:#a9b9d4;font-size:13px}
+
 #settingsView{padding:4px 2px 30px}
 .settingsTop{display:flex;align-items:center;gap:16px;margin-bottom:16px}
 .settingsTop button,.tapBox button{border:0;border-radius:12px;background:#2366b9;color:white;padding:13px 16px;font:inherit;touch-action:manipulation}
@@ -2475,7 +2490,13 @@ h1{font-size:23px;letter-spacing:.04em;margin:0}.sub{font-size:12px;color:#8e9db
 <button class="pad" data-mode="3" onclick="choose(3)"><span class="symbol"><svg viewBox="0 0 64 64"><path d="M9 33h11l7-16 10 31 7-15h11"/><path d="M22 9a25 25 0 1 1-13 43"/></svg></span><span class="name">BPM AUTO</span><span class="hint">WHITE</span></button>
 <button class="pad" data-mode="4" onclick="choose(4)"><span class="symbol"><svg viewBox="0 0 64 64"><path d="M36 5 14 35h16l-3 24 23-34H34z"/></svg></span><span class="name">ENERGY</span><span class="hint">STROBE</span></button>
 <button class="pad" data-mode="5" onclick="choose(5)"><span class="symbol"><svg viewBox="0 0 64 64"><path d="M34 5c4 14-6 18-3 27 6-3 9-9 10-14 19 20 15 37-8 40C10 59 8 42 18 29c1 11 7 13 9 13-5-14 0-27 7-37z"/></svg></span><span class="name">FIRE</span><span class="hint">&amp; SPARKS</span></button>
-</section><footer class="footer"><button type="button" id="randomBtn" class="randomBtn" onclick="randomPress()" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M4 7h3c5 0 5 10 10 10h3m-3-3 3 3-3 3M4 17h3c2 0 3-2 4-4m2-3c1-2 2-3 4-3h3m-3-3 3 3-3 3"/></svg><span>RANDOM</span></button><button type="button" class="gear" onclick="showSettings()" aria-label="Innstillinger"><svg viewBox="0 0 24 24"><path d="M10 2h4l.8 2.6 2 .9 2.4-1.2 2.8 2.8-1.2 2.4.9 2L24 12l-2.3 1.5-.9 2 1.2 2.4-2.8 2.8-2.4-1.2-2 .9L14 23h-4l-.8-2.6-2-.9-2.4 1.2L2 17.9l1.2-2.4-.9-2L0 12l2.3-1.5.9-2L2 6.1l2.8-2.8 2.4 1.2 2-.9z" transform="translate(1 1) scale(.91)"/><circle cx="12" cy="12" r="3"/></svg></button></footer></section>
+</section><footer class="footer"><button type="button" id="randomBtn" class="randomBtn" onclick="randomPress()" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M4 7h3c5 0 5 10 10 10h3m-3-3 3 3-3 3M4 17h3c2 0 3-2 4-4m2-3c1-2 2-3 4-3h3m-3-3 3 3-3 3"/></svg><span>RANDOM</span></button><button type="button" class="gear" onclick="showPalettes()" aria-label="Fargepaletter" title="Fargepaletter"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 3v18M3 12h18M5.5 5.5l13 13M18.5 5.5l-13 13" stroke="currentColor" stroke-width="1.5"/></svg></button><button type="button" class="gear" onclick="showSettings()" aria-label="Innstillinger"><svg viewBox="0 0 24 24"><path d="M10 2h4l.8 2.6 2 .9 2.4-1.2 2.8 2.8-1.2 2.4.9 2L24 12l-2.3 1.5-.9 2 1.2 2.4-2.8 2.8-2.4-1.2-2 .9L14 23h-4l-.8-2.6-2-.9-2.4 1.2L2 17.9l1.2-2.4-.9-2L0 12l2.3-1.5.9-2L2 6.1l2.8-2.8 2.4 1.2 2-.9z" transform="translate(1 1) scale(.91)"/><circle cx="12" cy="12" r="3"/></svg></button></footer></section>
+<section id="paletteView" hidden>
+<header class="settingsTop"><button type="button" onclick="showHome()">← Tilbake</button><h2>Fargepaletter</h2></header>
+<p class="paletteHelp" id="paletteModeName">Velg palett for aktiv effekt.</p>
+<p class="paletteHelp">De fire første palettene overstyrer alle effekter midlertidig, uten å lagres. Øvrige valg lagres for den aktive effekten. Fargene påvirker ikke LED-stripen før steg 2B.</p>
+<div id="paletteGroups"></div><p class="paletteHelp" id="paletteStatus"></p>
+</section>
 <section id="settingsView" hidden>
 <header class="settingsTop"><button type="button" onclick="showHome()">← Tilbake</button><h2>Innstillinger</h2></header>
 <h3>LED &amp; Audio</h3>
@@ -2530,14 +2551,105 @@ function showRandom(enabled){randomEnabled=enabled;const b=document.getElementBy
 async function syncRandom(){try{const r=await fetch('/api/random-state',{cache:'no-store'});if(!r.ok)return;const d=await r.json();showRandom(d.enabled);highlight(d.mode);waveStyle=d.waveVariant;waveIndex=d.waveColor;vuStyle=d.vuCentered?1:0;vuIndex=d.vuColor;particleStyle=d.particleVariant;particleIndex=d.particleColor;bpmColorIndex=d.bpmColor;energyCount=d.energyFlashes;updateVUHint();updateWaveHint();updateParticleHint();document.querySelector('[data-mode="3"] .hint').textContent='BPM AUTO';document.querySelector('[data-mode="4"] .hint').textContent=energyCount+' FLASH'+(energyCount===1?'':'ES');}catch(e){}}
 async function randomPress(){try{const r=await fetch('/api/random-next',{cache:'no-store'});if(r.ok)await syncRandom();}catch(e){}}
 function showSettings(){
+ document.getElementById('paletteView').hidden=true;
  document.getElementById('homeView').hidden=true;
  document.getElementById('settingsView').hidden=false;
  refreshSettings();
 }
 function showHome(){
+ document.getElementById('paletteView').hidden=true;
  document.getElementById('settingsView').hidden=true;
  document.getElementById('homeView').hidden=false;
 }
+
+// Palette metadata only (step 2A); no changes to LED rendering or effect algorithms.
+const paletteGroups=[
+ ['Midlertidig · alle effekter',[
+ ['Rainbow',['#f22','#fa0','#ff0','#0d5','#09e','#65f','#c0f','#f3a']],
+ ['Party',['#f0a','#fa0','#90f','#0df','#f25','#ff0','#0f9','#f0a']],
+ ['Ocean',['#001b54','#0077b6','#00b4d8','#90e0ef','#48cae4','#023e8a','#0077b6','#caf0f8']],
+ ['Forest',['#123524','#245c35','#3e8b46','#73a942','#b7d35b','#276749','#194d33','#a0b75e']]
+ ]],
+ ['Multicolor',[
+ ['Sunset',['#27104e','#702b86','#b33986','#f25f5c','#ff914d','#ffcf70','#f76d39','#38164b']],
+ ['Lava',['#350000','#9c1600','#ff4000','#ff8c00','#ffe080','#ff5400','#b32100','#350000']],
+ ['Aurora',['#08213e','#007c80','#00bb83','#8bffba','#8a53d6','#1bb1a7','#3b358e','#08213e']],
+ ['C9',['#f22525','#ffb600','#0ab64a','#2567ed']]
+ ]],
+ ['Fire farger',[
+ ['Neon',['#ff00aa','#00e5ff','#9d4edd','#ffee00']],
+ ['Tropical',['#00d1b2','#ffb703','#fb5607','#3a86ff']],
+ ['Icefire',['#002b7f','#008cff','#8ceeff','#ffffff']],
+ ['Retro',['#f9c74f','#f9844a','#f94144','#577590']],
+ ['Candy',['#ff65b3','#b388eb','#66d9e8','#ffe66d']],
+ ['Autumn',['#8c2f00','#d65a00','#ffa62b','#ffdf80']],
+ ['Night',['#061a40','#214e8a','#6844b8','#c44dce']],
+ ['Vintage',['#9c4637','#d29b6f','#e8d8b8','#647e73']]
+ ]],
+ ['En farge · nyanser',[
+ ['Red',['#220000','#620000','#a50000','#ff3030']],
+ ['Blue',['#000c35','#002c80','#1464d2','#8bcaff']],
+ ['Green',['#00200e','#00662c','#00b85c','#a2ffc1']],
+ ['Purple',['#18002b','#4c148c','#9146d8','#e1b7ff']],
+ ['Amber',['#321000','#8c3900','#e98100','#ffe29b']],
+ ['Cyan',['#002b32','#006b80','#00b9d0','#a4f7ff']],
+ ['Pink',['#390a27','#8e195b','#e5489a','#ffd1e8']],
+ ['White',['#141414','#525252','#aaaaaa','#ffffff']]
+ ]],
+ ['To farger · 50/50',[
+ ['Red / Blue',['#ff2435','#ff2435','#176bff','#176bff']],
+ ['Blue / Gold',['#176bff','#176bff','#ffc22b','#ffc22b']],
+ ['Pink / Cyan',['#ff30b4','#ff30b4','#00dbeb','#00dbeb']],
+ ['Purple / Green',['#8b45e8','#8b45e8','#30dc79','#30dc79']],
+ ['Orange / Teal',['#ff8a28','#ff8a28','#00a6a6','#00a6a6']],
+ ['Red / White',['#f5222d','#f5222d','#ffffff','#ffffff']],
+ ['Gold / Purple',['#ffd046','#ffd046','#7029bd','#7029bd']],
+ ['Blue / White',['#2469e8','#2469e8','#ffffff','#ffffff']]
+ ]]
+];
+let paletteSaved=[0,0,0,0,0,0],paletteTemporary=-1;
+const paletteNames=['WAVE','VU METER','PARTICLES','BPM AUTO','ENERGY','FIRE'];
+function renderPalettes(){
+ const root=document.getElementById('paletteGroups');root.replaceChildren();
+ document.getElementById('paletteModeName').textContent='Aktiv effekt: '+paletteNames[active]+' · Lagret: '+(paletteSaved[active]===0?'DEFAULT':paletteLabel(paletteSaved[active]));
+ let id=1;
+ const defaultGroup=document.createElement('section');defaultGroup.className='paletteGroup';
+ defaultGroup.innerHTML='<h3>Standard</h3>';
+ const defaultBtn=document.createElement('button');defaultBtn.className='paletteTile'+(paletteTemporary<0&&paletteSaved[active]===0?' selected':'');
+ defaultBtn.textContent='DEFAULT · effektens opprinnelige farger';defaultBtn.onclick=()=>savePalette(0);defaultGroup.appendChild(defaultBtn);root.appendChild(defaultGroup);
+ paletteGroups.forEach((group,g)=>{
+ const section=document.createElement('section');section.className='paletteGroup';
+ const title=document.createElement('h3');title.textContent=group[0];section.appendChild(title);
+ const grid=document.createElement('div');grid.className='paletteGrid';
+ group[1].forEach(p=>{
+ const pid=id++;const btn=document.createElement('button');
+ btn.className='paletteTile'+((paletteTemporary>=0?paletteTemporary===pid:paletteSaved[active]===pid)?' selected':'');
+ btn.title=p[0];btn.onclick=()=>savePalette(pid);
+ const sw=document.createElement('span');sw.className='paletteSwatch';
+ p[1].forEach(c=>{const cell=document.createElement('i');cell.style.background=c;sw.appendChild(cell);});
+ const label=document.createElement('span');label.className='paletteLabel';label.textContent=p[0];
+ btn.appendChild(sw);btn.appendChild(label);grid.appendChild(btn);
+ });section.appendChild(grid);root.appendChild(section);
+ });
+}
+function paletteLabel(id){let n=1;for(const group of paletteGroups)for(const p of group[1]){if(n++===id)return p[0];}return 'DEFAULT';}
+async function loadPalettes(){try{
+ const r=await fetch('/api/palettes',{cache:'no-store'});if(!r.ok)throw Error('Kunne ikke lese paletter');
+ const d=await r.json();paletteSaved=d.saved;paletteTemporary=d.temporary;renderPalettes();
+}catch(e){document.getElementById('paletteStatus').textContent=e.message;}}
+function showPalettes(){
+ document.getElementById('homeView').hidden=true;
+ document.getElementById('settingsView').hidden=true;
+ document.getElementById('paletteView').hidden=false;
+ loadPalettes();
+}
+async function savePalette(id){try{
+ const r=await fetch('/api/palette?mode='+active+'&id='+id,{method:'POST',cache:'no-store'});
+ if(!r.ok)throw Error(await r.text());
+ document.getElementById('paletteStatus').textContent=id>0&&id<5?'Midlertidig global palett valgt':'Palett lagret for '+paletteNames[active];
+ await loadPalettes();
+}catch(e){document.getElementById('paletteStatus').textContent='Feil: '+e.message;}}
+
 async function refreshSettings(){
  try{const r=await fetch('/api/settings',{cache:'no-store'});if(!r.ok)return;
  const d=await r.json();
@@ -2692,6 +2804,36 @@ void beginWiFi() {
             ",\"ledPin\":" + String((int)ledPin) + "}";
         webServer.sendHeader("Cache-Control", "no-store");
         webServer.send(200, "application/json", json);
+    });
+    webServer.on("/api/palettes", HTTP_GET, []() {
+        if (setupAPActive) { webServer.send(403, "text/plain", "Setup mode"); return; }
+        String json = "{\"saved\":[";
+        for (uint8_t i=0;i<6;i++) { if (i) json += ","; json += String(effectPalette[i]); }
+        json += "],\"temporary\":" + String((int)temporaryGlobalPalette) + "}";
+        webServer.sendHeader("Cache-Control", "no-store");
+        webServer.send(200, "application/json", json);
+    });
+    webServer.on("/api/palette", HTTP_POST, []() {
+        if (setupAPActive) { webServer.send(403, "text/plain", "Setup mode"); return; }
+        if (!webServer.hasArg("mode") || !webServer.hasArg("id")) {
+            webServer.send(400, "text/plain", "Missing mode/id"); return;
+        }
+        String m = webServer.arg("mode"), p = webServer.arg("id");
+        for (unsigned i=0;i<m.length();i++) if (!isDigit(m[i])) { webServer.send(400,"text/plain","Invalid mode"); return; }
+        for (unsigned i=0;i<p.length();i++) if (!isDigit(p[i])) { webServer.send(400,"text/plain","Invalid palette"); return; }
+        int modeId=m.toInt(), paletteId=p.toInt();
+        if (modeId<0 || modeId>=6 || paletteId<0 || paletteId>32) {
+            webServer.send(400,"text/plain","Out of range"); return;
+        }
+        if (paletteId>=1 && paletteId<=4) {
+            temporaryGlobalPalette=(int8_t)paletteId;
+        } else {
+            temporaryGlobalPalette=-1;
+            effectPalette[modeId]=(uint8_t)paletteId;
+            String key="effect"+String(modeId);
+            palettePreferences.putUChar(key.c_str(),(uint8_t)paletteId);
+        }
+        webServer.send(200,"text/plain","OK");
     });
     webServer.on("/api/led-config", HTTP_POST, []() {
         if (setupAPActive) { webServer.send(403, "text/plain", "Setup mode"); return; }
@@ -2936,6 +3078,12 @@ void setup() {
     }
 
     // Load saved LED configuration before initializing the NeoPixel driver.
+    palettePreferences.begin("musicled-pal", false);
+    for (uint8_t i=0;i<6;i++) {
+        String key = "effect" + String(i);
+        uint8_t value = palettePreferences.getUChar(key.c_str(), 0);
+        effectPalette[i] = (value >= 5 && value <= 32) ? value : 0;
+    }
     ledPreferences.begin("musicled-led", false);
     NUM_LEDS = constrain((int)ledPreferences.getUShort("count", DEFAULT_NUM_LEDS), 1, (int)MAX_LEDS);
     int storedPin = (int)ledPreferences.getUChar("pin", DEFAULT_LED_PIN);
