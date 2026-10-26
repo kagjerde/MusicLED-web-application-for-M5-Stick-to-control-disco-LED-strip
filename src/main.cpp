@@ -65,6 +65,7 @@ volatile LedMode mode = RAINBOW_MUSIC;
 volatile uint8_t effectPalette[6] = {0,0,0,0,0,0};
 volatile int8_t temporaryGlobalPalette = -1;
 volatile uint32_t paletteRevision = 0;
+volatile bool paletteReverse[6] = {false,false,false,false,false,false};
 uint8_t activePalette(uint8_t effect) {
     return temporaryGlobalPalette > 0 ? (uint8_t)temporaryGlobalPalette : effectPalette[effect];
 }
@@ -1798,8 +1799,8 @@ void updateFireSparks() {
 static const uint32_t palettes8[][8] = {
     {0xff2222, 0xffaa00, 0xffff00, 0x00dd55, 0x0099ee, 0x6655ff, 0xcc00ff, 0xff33aa}, // 1
     {0xff00aa, 0xffaa00, 0x9900ff, 0x00ddff, 0xff2255, 0xffff00, 0x00ff99, 0xff00aa}, // 2
-    {0x001b54, 0x0077b6, 0x00b4d8, 0x90e0ef, 0x48cae4, 0x023e8a, 0x0077b6, 0xcaf0f8}, // 3
-    {0x123524, 0x245c35, 0x3e8b46, 0x73a942, 0xb7d35b, 0x276749, 0x194d33, 0xa0b75e}, // 4
+    {0x001a88, 0x004dff, 0x008cff, 0x00d6ff, 0x00ffdd, 0x002acc, 0x006bff, 0x00ffef}, // 3
+    {0x00451b, 0x00822b, 0x00bc31, 0x59db00, 0x9ee600, 0x00a54d, 0x007c32, 0x6ed400}, // 4
     {0x27104e, 0x702b86, 0xb33986, 0xf25f5c, 0xff914d, 0xffcf70, 0xf76d39, 0x38164b}, // 5
     {0x350000, 0x9c1600, 0xff4000, 0xff8c00, 0xffe080, 0xff5400, 0xb32100, 0x350000}, // 6
     {0x08213e, 0x007c80, 0x00bb83, 0x8bffba, 0x8a53d6, 0x1bb1a7, 0x3b358e, 0x08213e}, // 7
@@ -1830,14 +1831,14 @@ static const uint32_t palettes1[][1] = {
 };
 
 static const uint32_t palettes2[][2] = {
-    {0xff2435, 0x176bff}, // 1
-    {0x176bff, 0xffc22b}, // 2
-    {0xff30b4, 0x00dbeb}, // 3
-    {0x8b45e8, 0x30dc79}, // 4
-    {0xff8a28, 0x00a6a6}, // 5
-    {0xf5222d, 0xffffff}, // 6
-    {0xffd046, 0x7029bd}, // 7
-    {0x2469e8, 0xffffff}, // 8
+    {0xff0000, 0x003dff}, // 1
+    {0x003dff, 0xffa000}, // 2
+    {0xff0090, 0x00cfff}, // 3
+    {0x7900ff, 0x00e647}, // 4
+    {0xff7500, 0x00cccc}, // 5
+    {0xff0000, 0xffffff}, // 6
+    {0xffbc00, 0x7000ff}, // 7
+    {0x004aff, 0xffffff}, // 8
 };
 
 // One continuous gradient from bottom to top; no repeated patterns.
@@ -1888,7 +1889,8 @@ void applyPaletteFrame(LedMode effect) {
         if (!intensity) continue;
         // Square the effect envelope: dark levels remain dark, peaks reach full color.
         const uint16_t level = ((uint32_t)intensity*intensity + 127) / 255;
-        uint32_t c = saturatedPaletteColor(paletteColorAt(id,i),id);
+        uint16_t palettePosition = paletteReverse[(uint8_t)effect] ? (NUM_LEDS-1-i) : i;
+        uint32_t c = saturatedPaletteColor(paletteColorAt(id,palettePosition),id);
         strip.setPixelColor(i, strip.Color(
             ((c>>16)&255)*level/255,
             ((c>>8)&255)*level/255,
@@ -2612,7 +2614,7 @@ h1{font-size:23px;letter-spacing:.04em;margin:0}.sub{font-size:12px;color:#8e9db
 </section><footer class="footer"><button type="button" id="randomBtn" class="randomBtn" onclick="randomPress()" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M4 7h3c5 0 5 10 10 10h3m-3-3 3 3-3 3M4 17h3c2 0 3-2 4-4m2-3c1-2 2-3 4-3h3m-3-3 3 3-3 3"/></svg><span>RANDOM</span></button><button type="button" class="gear" onclick="showPalettes()" aria-label="Fargepaletter" title="Fargepaletter"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 20a10 10 0 0 1 20 0" stroke="#f44" stroke-width="3" fill="none"/><path d="M5 20a7 7 0 0 1 14 0" stroke="#ffb733" stroke-width="3" fill="none"/><path d="M8 20a4 4 0 0 1 8 0" stroke="#3edc83" stroke-width="3" fill="none"/><path d="M11 20a1 1 0 0 1 2 0" stroke="#559bff" stroke-width="2" fill="none"/></svg></button><button type="button" class="gear" onclick="showSettings()" aria-label="Innstillinger"><svg viewBox="0 0 24 24"><path d="M10 2h4l.8 2.6 2 .9 2.4-1.2 2.8 2.8-1.2 2.4.9 2L24 12l-2.3 1.5-.9 2 1.2 2.4-2.8 2.8-2.4-1.2-2 .9L14 23h-4l-.8-2.6-2-.9-2.4 1.2L2 17.9l1.2-2.4-.9-2L0 12l2.3-1.5.9-2L2 6.1l2.8-2.8 2.4 1.2 2-.9z" transform="translate(1 1) scale(.91)"/><circle cx="12" cy="12" r="3"/></svg></button></footer></section>
 <section id="paletteView" hidden>
 <header class="settingsTop"><button type="button" onclick="showHome()">← Tilbake</button><h2>Fargepaletter</h2></header>
-<div id="paletteGroups"></div><p class="paletteHelp" id="paletteModeName">Velg palett for aktiv effekt.</p><p class="paletteHelp" id="paletteStatus"></p><p class="paletteHelp">De fire første palettene er midlertidige globale valg. Andre valg lagres per effekt. LED-fargene aktiveres i steg 2B.</p>
+<div id="paletteGroups"></div><p class="paletteHelp" id="paletteModeName">Velg palett for aktiv effekt.</p><p><button type="button" id="paletteReverseButton" onclick="togglePaletteReverse()">⇅ Snu fargeretning</button></p><p class="paletteHelp" id="paletteStatus"></p><p class="paletteHelp">De fire første palettene er midlertidige globale valg. Andre valg lagres per effekt. LED-fargene aktiveres i steg 2B.</p>
 </section>
 <section id="settingsView" hidden>
 <header class="settingsTop"><button type="button" onclick="showHome()">← Tilbake</button><h2>Innstillinger</h2></header>
@@ -2724,10 +2726,12 @@ const paletteGroups=[
  ['Blue / White',['#2469e8','#2469e8','#ffffff','#ffffff']]
  ]]
 ];
-let paletteSaved=[0,0,0,0,0,0],paletteTemporary=-1;
+let paletteSaved=[0,0,0,0,0,0],paletteTemporary=-1,paletteReversed=[false,false,false,false,false,false];
 const paletteNames=['WAVE','VU METER','PARTICLES','BPM AUTO','ENERGY','FIRE'];
 function renderPalettes(){
  const root=document.getElementById('paletteGroups');root.replaceChildren();
+ const reverseButton=document.getElementById('paletteReverseButton');
+ reverseButton.textContent=paletteReversed[active]?'⇅ Reversert · trykk for normal':'⇅ Normal · trykk for reversering';
  document.getElementById('paletteModeName').textContent='Aktiv effekt: '+paletteNames[active]+' · Lagret: '+(paletteSaved[active]===0?'DEFAULT':paletteLabel(paletteSaved[active]));
  let id=1;
  const defaultGroup=document.createElement('section');defaultGroup.className='paletteGroup';
@@ -2752,7 +2756,7 @@ function renderPalettes(){
 function paletteLabel(id){let n=1;for(const group of paletteGroups)for(const p of group[1]){if(n++===id)return p[0];}return 'DEFAULT';}
 async function loadPalettes(){try{
  const r=await fetch('/api/palettes',{cache:'no-store'});if(!r.ok)throw Error('Kunne ikke lese paletter');
- const d=await r.json();paletteSaved=d.saved;paletteTemporary=d.temporary;renderPalettes();
+ const d=await r.json();paletteSaved=d.saved;paletteTemporary=d.temporary;paletteReversed=d.reverse||[false,false,false,false,false,false];renderPalettes();
 }catch(e){document.getElementById('paletteStatus').textContent=e.message;}}
 function showPalettes(){
  document.getElementById('homeView').hidden=true;
@@ -2760,6 +2764,12 @@ function showPalettes(){
  document.getElementById('paletteView').hidden=false;
  loadPalettes();
 }
+async function togglePaletteReverse(){try{
+ const value=paletteReversed[active]?0:1;
+ const r=await fetch("/api/palette-reverse?mode="+active+"&value="+value,{method:"POST",cache:"no-store"});
+ if(!r.ok)throw Error(await r.text());
+ await loadPalettes();
+}catch(e){document.getElementById("paletteStatus").textContent="Feil: "+e.message;}}
 async function savePalette(id){try{
  const r=await fetch('/api/palette?mode='+active+'&id='+id,{method:'POST',cache:'no-store'});
  if(!r.ok)throw Error(await r.text());
@@ -2926,9 +2936,23 @@ void beginWiFi() {
         if (setupAPActive) { webServer.send(403, "text/plain", "Setup mode"); return; }
         String json = "{\"saved\":[";
         for (uint8_t i=0;i<6;i++) { if (i) json += ","; json += String(effectPalette[i]); }
-        json += "],\"temporary\":" + String((int)temporaryGlobalPalette) + "}";
+        json += "],\"temporary\":" + String((int)temporaryGlobalPalette) + ",\"reverse\":[";
+        for (uint8_t i=0;i<6;i++) { if (i) json += ","; json += paletteReverse[i] ? "true" : "false"; }
+        json += "]}";
         webServer.sendHeader("Cache-Control", "no-store");
         webServer.send(200, "application/json", json);
+    });
+    webServer.on("/api/palette-reverse", HTTP_POST, []() {
+        if (setupAPActive) { webServer.send(403,"text/plain","Setup mode"); return; }
+        if (!webServer.hasArg("mode") || !webServer.hasArg("value")) { webServer.send(400,"text/plain","Missing arguments"); return; }
+        String m=webServer.arg("mode"),v=webServer.arg("value");
+        if (m.length()!=1 || !isDigit(m[0]) || (v!="0" && v!="1")) { webServer.send(400,"text/plain","Invalid arguments"); return; }
+        int index=m.toInt();if(index>=6) { webServer.send(400,"text/plain","Invalid mode"); return; }
+        paletteReverse[index]=(v=="1");
+        String key="reverse"+String(index);
+        palettePreferences.putBool(key.c_str(),paletteReverse[index]);
+        paletteRevision++;
+        webServer.send(200,"text/plain","OK");
     });
     webServer.on("/api/palette", HTTP_POST, []() {
         if (setupAPActive) { webServer.send(403, "text/plain", "Setup mode"); return; }
@@ -3201,6 +3225,8 @@ void setup() {
         String key = "effect" + String(i);
         uint8_t value = palettePreferences.getUChar(key.c_str(), 0);
         effectPalette[i] = (value >= 5 && value <= 32) ? value : 0;
+        String reverseKey="reverse"+String(i);
+        paletteReverse[i]=palettePreferences.getBool(reverseKey.c_str(),false);
     }
     ledPreferences.begin("musicled-led", false);
     NUM_LEDS = constrain((int)ledPreferences.getUShort("count", DEFAULT_NUM_LEDS), 1, (int)MAX_LEDS);
