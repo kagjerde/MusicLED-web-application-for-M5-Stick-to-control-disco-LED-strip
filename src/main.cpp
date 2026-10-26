@@ -1979,7 +1979,11 @@ static const uint32_t palettesExtra[][8] = {
  {0x801100,0xB62203,0xD73502,0xFC6400,0xFF7500,0xFAC000,0xFF7500,0xD73502}, // 41 Fire Flames
  {0x7C0A02,0xB22222,0xE25822,0xF1BC31,0xF6F052,0xF1BC31,0xE25822,0xB22222}, // 42 Explode
  {0xF69835,0xDD355C,0x120F52,0x8EF93D,0xDD1CDD,0xFFE925,0xDD1CDD,0x120F52}, // 43 Party Neon
- {0xE90000,0xF3C900,0xEB40E1,0x00E938,0x0062D9,0xEB40E1,0xF3C900,0xE90000}  // 44 Party Night
+ {0xE90000,0xF3C900,0xEB40E1,0x00E938,0x0062D9,0xEB40E1,0xF3C900,0xE90000}, // 44 Party Night
+ {0xC2009E,0x8ABC01,0xF2D321,0x00A7D1,0x083A96,0xC2009E,0x8ABC01,0xF2D321}, // 45 Pixel Paradise
+ {0xA312A5,0xEF2E5B,0xFFA914,0xFDE61C,0x219BC0,0xA312A5,0xEF2E5B,0xFFA914}, // 46 Flying Kites
+ {0x086FC4,0x1ACBB9,0xF4DD57,0x9FD062,0xE45121,0x086FC4,0x1ACBB9,0xF4DD57}, // 47 Vibrant Summer
+ {0xF028A7,0x14FFB9,0x01DAD7,0xFA0000,0x3D09CE,0xF028A7,0x14FFB9,0x01DAD7}  // 48 Electric Rush
 };
 static const uint32_t palettes4[][4] = {
     {0xf22525, 0xffb600, 0x0ab64a, 0x2567ed}, // 1
@@ -2019,7 +2023,7 @@ static const uint32_t palettes2[][2] = {
 // One continuous gradient from bottom to top; no repeated patterns.
 uint8_t paletteStopCount(uint8_t id) {return (id<=7||id>=33)?8:id<=16?4:id<=24?1:2;}
 uint32_t paletteStopColor(uint8_t id,uint32_t beat) {
-    if(id<1||id>44) return strip.Color(255,255,255);
+    if(id<1||id>48) return strip.Color(255,255,255);
     uint8_t count=paletteStopCount(id);
     uint8_t index=(uint8_t)(beat%count);
     if(id<=7)return palettes8[id-1][index];
@@ -2042,7 +2046,7 @@ uint16_t vividPaletteHue(uint32_t color) {
     return (uint16_t)(sector*(65536.0f/6.0f));
 }
 uint32_t paletteColorAt(uint8_t id, uint16_t position) {
-    if (id < 1 || id > 44) return 0;
+    if (id < 1 || id > 48) return 0;
     const uint32_t* colors;
     uint8_t count;
     if (id <= 7)       { colors = palettes8[id-1]; count = 8; }
@@ -2095,7 +2099,7 @@ void applyPaletteFrame(LedMode effect) {
     if (effect == ENERGY_STROBE || effect == RAINBOW_MUSIC) return; // Wave renders palettes in its own animated renderer.
     if (effect == COMET_BEAT && (particleVariant == 3 || particleVariant == 4 || particleVariant == 5)) return; // Moving particles use fixed palette-stop colors.
     uint8_t id = activePalette((uint8_t)effect);
-    if (!id || id > 44) return; // DEFAULT retains original effect colors.
+    if (!id || id > 48) return; // DEFAULT retains original effect colors.
     for (uint16_t i=0; i<NUM_LEDS; i++) {
         uint32_t old = strip.getPixelColor(i);
         uint8_t r=(old>>16)&255, g=(old>>8)&255, b=old&255;
@@ -2964,7 +2968,11 @@ const paletteGroups=[
  ['Fire Flames',['#801100','#B62203','#D73502','#FC6400','#FF7500','#FAC000','#FF7500','#D73502']],
  ['Explode',['#7C0A02','#B22222','#E25822','#F1BC31','#F6F052','#F1BC31','#E25822','#B22222']],
  ['Party Neon',['#F69835','#DD355C','#120F52','#8EF93D','#DD1CDD','#FFE925','#DD1CDD','#120F52']],
- ['Party Night',['#E90000','#F3C900','#EB40E1','#00E938','#0062D9','#EB40E1','#F3C900','#E90000']]
+ ['Party Night',['#E90000','#F3C900','#EB40E1','#00E938','#0062D9','#EB40E1','#F3C900','#E90000']],
+ ['Pixel Paradise',['#C2009E','#8ABC01','#F2D321','#00A7D1','#083A96','#C2009E','#8ABC01','#F2D321']],
+ ['Flying Kites',['#A312A5','#EF2E5B','#FFA914','#FDE61C','#219BC0','#A312A5','#EF2E5B','#FFA914']],
+ ['Vibrant Summer',['#086FC4','#1ACBB9','#F4DD57','#9FD062','#E45121','#086FC4','#1ACBB9','#F4DD57']],
+ ['Electric Rush',['#F028A7','#14FFB9','#01DAD7','#FA0000','#3D09CE','#F028A7','#14FFB9','#01DAD7']]
  ]],
  ['Fire farger',[
  ['Neon',['#ff00aa','#00e5ff','#9d4edd','#ffee00']],
@@ -3011,7 +3019,7 @@ function renderPalettes(){
 
  document.getElementById('paletteModeName').textContent='Animasjon: '+paletteNames[active]+' · Variant: '+variant+' | Lagret farge: '+stored+' | Aktiv farge: '+paletteLabel(current)+(randomEnabled?' · RANDOM':'');
  let id=1;
- const paletteIds=[[1,2,3,4,33,34,35,36],[5,6,7,8,37,38,39,40,41,42,43,44],Array.from({length:8},(_,i)=>9+i),Array.from({length:8},(_,i)=>17+i),Array.from({length:8},(_,i)=>25+i)];
+ const paletteIds=[[1,2,3,4,33,34,35,36],[5,6,7,8,37,38,39,40,41,42,43,44,45,46,47,48],Array.from({length:8},(_,i)=>9+i),Array.from({length:8},(_,i)=>17+i),Array.from({length:8},(_,i)=>25+i)];
  paletteGroups.forEach((group,g)=>{
  const section=document.createElement('section');section.className='paletteGroup';
  const title=document.createElement('h3');title.textContent=group[0];section.appendChild(title);
@@ -3026,7 +3034,7 @@ function renderPalettes(){
  });section.appendChild(grid);root.appendChild(section);
  });
 }
-function paletteLabel(id){const ids=[[1,2,3,4,33,34,35,36],[5,6,7,8,37,38,39,40,41,42,43,44],[9,10,11,12,13,14,15,16],[17,18,19,20,21,22,23,24],[25,26,27,28,29,30,31,32]];for(let g=0;g<ids.length;g++){const i=ids[g].indexOf(id);if(i>=0)return paletteGroups[g][1][i][0];}return 'DEFAULT';}
+function paletteLabel(id){const ids=[[1,2,3,4,33,34,35,36],[5,6,7,8,37,38,39,40,41,42,43,44,45,46,47,48],[9,10,11,12,13,14,15,16],[17,18,19,20,21,22,23,24],[25,26,27,28,29,30,31,32]];for(let g=0;g<ids.length;g++){const i=ids[g].indexOf(id);if(i>=0)return paletteGroups[g][1][i][0];}return 'DEFAULT';}
 async function loadPalettes(){try{
  const r=await fetch('/api/palettes',{cache:'no-store'});if(!r.ok)throw Error('Kunne ikke lese paletter');
  const d=await r.json();paletteSaved=d.saved;paletteTemporary=d.temporary;paletteReversed=d.reverse||[false,false,false,false,false,false];renderPalettes();renderModeIcons();
@@ -3079,7 +3087,7 @@ async function tap(){try{await fetch('/api/tap',{cache:'no-store'});document.get
 const defaultIconColors=[['#ff3c49','#ffc13b','#25d6c4'],['#20d77d','#ffca38','#ff4545'],['#ff314e','#ffc83c','#17baff'],['#ffffff'],['#ffe253','#ffffff'],['#a51500','#ff5a00','#ffcf32']];
 function currentIconColors(mode){
  const id=randomEnabled?paletteTemporary:(paletteTemporary>0?paletteTemporary:paletteSaved[mode]);
- if(id>0){const groups=[[1,2,3,4,33,34,35,36],[5,6,7,8,37,38,39,40,41,42,43,44],[9,10,11,12,13,14,15,16],[17,18,19,20,21,22,23,24],[25,26,27,28,29,30,31,32]];
+ if(id>0){const groups=[[1,2,3,4,33,34,35,36],[5,6,7,8,37,38,39,40,41,42,43,44,45,46,47,48],[9,10,11,12,13,14,15,16],[17,18,19,20,21,22,23,24],[25,26,27,28,29,30,31,32]];
  for(let g=0;g<groups.length;g++){const i=groups[g].indexOf(id);if(i>=0)return paletteGroups[g][1][i][1];}}
  return defaultIconColors[mode];
 }
@@ -3274,7 +3282,7 @@ void beginWiFi() {
         for (unsigned i=0;i<m.length();i++) if (!isDigit(m[i])) { webServer.send(400,"text/plain","Invalid mode"); return; }
         for (unsigned i=0;i<p.length();i++) if (!isDigit(p[i])) { webServer.send(400,"text/plain","Invalid palette"); return; }
         int modeId=m.toInt(), paletteId=p.toInt();
-        if (modeId<0 || modeId>=6 || paletteId<0 || paletteId>44) {
+        if (modeId<0 || modeId>=6 || paletteId<0 || paletteId>48) {
             webServer.send(400,"text/plain","Out of range"); return;
         }
         if (randomPlay) {
