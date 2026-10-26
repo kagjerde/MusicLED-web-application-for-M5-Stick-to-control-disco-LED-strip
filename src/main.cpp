@@ -366,6 +366,15 @@ static uint8_t particleBurst=0;
 static float particleRocket=0, particleRocketVel=0;
 static bool rocketActive=false;
 static uint16_t particleRocketHue=0;
+uint8_t paletteStopCount(uint8_t id);
+uint32_t paletteStopColor(uint8_t id,uint32_t beat);
+uint32_t saturatedPaletteColor(uint32_t color,uint8_t id);
+uint32_t fireworkFragmentColor(uint16_t hue,uint8_t brightness) {
+  uint8_t id=activePalette(COMET_BEAT);
+  uint32_t c=id ? saturatedPaletteColor(paletteStopColor(id,(uint32_t)hue*paletteStopCount(id)/65536UL),id)
+                : strip.ColorHSV(hue,255,255);
+  return strip.Color(((c>>16)&255)*brightness/255,((c>>8)&255)*brightness/255,(c&255)*brightness/255);
+}
 static float fireworkPower=0.0f; // Captured from music strength at rocket launch
 
 void resetParticles(){
@@ -424,7 +433,7 @@ void updateParticles(){
      // Dynamics and VU envelope respond to musical peaks, not random brightness.
      fireworkPower=constrain(vu,0.0f,1.0f);
      // Random explosion height: 40%-95% of the strip, not a fixed apex.
-     const float targetHeight=(NUM_LEDS-1)*(random(40,96)*.01f);
+     const float targetHeight=(NUM_LEDS-1)*(random(25,61)*.01f);
      particleRocketVel=sqrtf(2.0f*55.0f*targetHeight);
      particleRocketHue=(uint16_t)random(65536);
    }
@@ -449,11 +458,11 @@ void updateParticles(){
      rocketActive=false;
      // The explosion happens after launch, not necessarily on the next beat.
      const float power=fireworkPower;
-      const int fragments=6+(int)(power*12.0f); // 6 soft to 18 strong
+      const int fragments=12+(int)(power*8.0f); // 12 soft to 20 strong
       const float spread=0.65f+random(75)*.01f;
       for(int k=0;k<fragments;k++){
         const float velocity=(random(2)?1.0f:-1.0f)*(12.0f+random(12,28)*spread);
-        particleSpawn(particleRocket,velocity,0.70f+power*0.30f+random(10)*.01f,5,
+        particleSpawn(particleRocket,velocity,0.90f+power*0.22f+random(10)*.01f,5,
                       (uint16_t)(particleRocketHue+random(65536)));
       }
    }
@@ -485,7 +494,7 @@ void updateParticles(){
      if(p.pos<0||p.pos>=NUM_LEDS){p.active=false;continue;}
      p.life-=dt*.7f;
      if(p.life<=0){p.active=false;continue;}
-     for(int k=0;k<6;k++)particleAdd((int)(p.pos-k*(p.vel>0?1:-1)),particleRGB(p.hue,(uint8_t)(255*p.life*(1.0f-.14f*k))));
+     for(int k=0;k<4;k++)particleAdd((int)(p.pos-k*(p.vel>0?1:-1)),particleRGB(p.hue,(uint8_t)(255*p.life*(1.0f-.22f*k))));
    }else if(p.type==4||p.type==5){
      // Gravity, in LED units per second squared. Balls bounce with energy loss.
      p.pos+=p.vel*dt;p.vel-=55.0f*dt;
@@ -498,12 +507,16 @@ void updateParticles(){
      if(p.type==5){
        // Fragments travel at most 20-30 LEDs from the burst, then disappear.
        if (fabsf(p.pos-particleRocket)>25.0f) {p.active=false;continue;}
-       p.life-=dt*(1.25f-0.50f*fireworkPower);
+       p.life-=dt*(0.72f-0.20f*fireworkPower);
        if(p.life<=0){p.active=false;continue;}
      }
      uint8_t v=(uint8_t)(255*(p.type==4?1.0f:p.life));
-     particleAdd((int)roundf(p.pos),particleRGB(p.hue,v));
-     if(p.type==5)particleAdd((int)roundf(p.pos-p.vel*.03f),particleRGB(p.hue,v/3));
+     particleAdd((int)roundf(p.pos),p.type==5?fireworkFragmentColor(p.hue,v):particleRGB(p.hue,v));
+     if(p.type==5){
+       int tail=(int)roundf(p.pos-p.vel*.03f);
+       particleAdd(tail,fireworkFragmentColor(p.hue,v/2));
+       particleAdd((int)roundf(p.pos-p.vel*.06f),fireworkFragmentColor(p.hue,v/4));
+     }
    }
  }
 }
@@ -1898,6 +1911,7 @@ uint32_t saturatedPaletteColor(uint32_t color, uint8_t id) {
 }
 void applyPaletteFrame(LedMode effect) {
     if (effect == ENERGY_STROBE) return; // Always white.
+    if (effect == COMET_BEAT && particleVariant == 5) return; // Firework fragments use individual palette-stop colors.
     uint8_t id = activePalette((uint8_t)effect);
     if (!id || id > 32) return; // DEFAULT retains original effect colors.
     for (uint16_t i=0; i<NUM_LEDS; i++) {
