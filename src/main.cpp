@@ -2843,7 +2843,7 @@ h1{font-size:23px;letter-spacing:.04em;margin:0}.sub{font-size:12px;color:#8e9db
 .paletteSwatch i{flex:1;min-width:0}
 .paletteLabel{display:block;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}
 .paletteGroup{margin:9px 0}.paletteGroup h3{font-size:12px;margin:0 0 4px}
-.paletteHelp{color:#a9b9d4;font-size:11px;margin:6px 0}#paletteView .settingsTop{margin-bottom:6px}#paletteView .settingsTop h2{font-size:18px}#paletteView{padding-bottom:8px}
+.pad .hint{display:none!important}.paletteHelp{color:#a9b9d4;font-size:11px;margin:6px 0}#paletteView .settingsTop{margin-bottom:6px}#paletteView .settingsTop h2{font-size:18px}#paletteView{padding-bottom:8px}
 
 #settingsView{padding:4px 2px 30px}
 .settingsTop{display:flex;align-items:center;gap:16px;margin-bottom:16px}
@@ -2870,7 +2870,7 @@ h1{font-size:23px;letter-spacing:.04em;margin:0}.sub{font-size:12px;color:#8e9db
 </section><footer class="footer"><button type="button" id="randomBtn" class="randomBtn" onclick="randomPress()" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M4 7h3c5 0 5 10 10 10h3m-3-3 3 3-3 3M4 17h3c2 0 3-2 4-4m2-3c1-2 2-3 4-3h3m-3-3 3 3-3 3"/></svg><span>RANDOM</span></button><button type="button" class="gear" onclick="showPalettes()" aria-label="Fargepaletter" title="Fargepaletter"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.3 16.7 18.8 2.3c.6-.8 1.5-.8 2-.3s.5 1.3-.1 2.1L9.2 18.4Z"/><path d="m6.8 16.4-1.7 1.7c-1.3-.1-2.8.6-3.3 2.1-.3.8-.7 1.3-1.1 1.7 3.2 1 6.3.4 8-2.3l.7-1.4"/><path d="m6.7 15.9 2.9 2.7"/></svg></button><button type="button" class="gear" onclick="showSettings()" aria-label="Innstillinger"><svg viewBox="0 0 24 24"><path d="M10 2h4l.8 2.6 2 .9 2.4-1.2 2.8 2.8-1.2 2.4.9 2L24 12l-2.3 1.5-.9 2 1.2 2.4-2.8 2.8-2.4-1.2-2 .9L14 23h-4l-.8-2.6-2-.9-2.4 1.2L2 17.9l1.2-2.4-.9-2L0 12l2.3-1.5.9-2L2 6.1l2.8-2.8 2.4 1.2 2-.9z" transform="translate(1 1) scale(.91)"/><circle cx="12" cy="12" r="3"/></svg></button></footer></section>
 <section id="paletteView" hidden>
 <header class="settingsTop"><button type="button" onclick="showHome()">← Tilbake</button><h2>Fargepaletter</h2></header>
-<div id="paletteGroups"></div><p class="paletteHelp" id="paletteModeName">Velg palett for aktiv effekt.</p><div id="paletteActions"><button type="button" id="paletteDefaultButton" onclick="savePalette(0)">Default</button><button type="button" id="paletteReverseButton" onclick="togglePaletteReverse()">⇅ Reverser</button></div><p class="paletteHelp" id="paletteStatus"></p><p class="paletteHelp">De åtte første palettene er midlertidige globale valg. Andre valg lagres per effekt.</p>
+<div id="paletteGroups"></div><p class="paletteHelp" id="paletteModeName">Laster gjeldende valg…</p><div id="paletteActions"><button type="button" id="paletteDefaultButton" onclick="savePalette(0)">Default</button><button type="button" id="paletteReverseButton" onclick="togglePaletteReverse()">⇅ Reverser</button></div><p class="paletteHelp" id="paletteStatus"></p><p class="paletteHelp">I RANDOM gjelder nye palettvalg alle effekter. Uten RANDOM er de åtte første midlertidige globale valg.</p>
 </section>
 <section id="settingsView" hidden>
 <header class="settingsTop"><button type="button" onclick="showHome()">← Tilbake</button><h2>Innstillinger</h2></header>
@@ -2998,13 +2998,18 @@ const paletteGroups=[
  ]]
 ];
 let paletteSaved=[0,0,0,0,0,0],paletteTemporary=-1,paletteReversed=[false,false,false,false,false,false];
+let paletteLastChosen=null;
 const paletteNames=['WAVE','VU METER','PARTICLES','BPM AUTO','ENERGY','FIRE'];
 function renderPalettes(){
  const root=document.getElementById('paletteGroups');root.replaceChildren();
  const reverseButton=document.getElementById('paletteReverseButton');
  reverseButton.textContent=paletteReversed[active]?'⇅ Reversert':'⇅ Reverser';
  document.getElementById('paletteDefaultButton').setAttribute('aria-pressed',String(randomEnabled?paletteTemporary===0:paletteTemporary<0&&paletteSaved[active]===0));
- document.getElementById('paletteModeName').textContent='Aktiv effekt: '+paletteNames[active]+' · Lagret: '+(randomEnabled?(paletteTemporary===0?'DEFAULT':paletteLabel(paletteTemporary)):(paletteSaved[active]===0?'DEFAULT':paletteLabel(paletteSaved[active])));
+ const variant=active===0?waveVariants[waveStyle]:active===1?(vuStyle?'CENTER':'NORMAL'):active===2?particleVariants[particleStyle]:active===3?bpmStyles[bpmStyle]:active===4?(energyCount+' FLASH'+(energyCount===1?'':'ES')):'FIRE & SPARKS';
+ const stored=paletteLabel(paletteSaved[active]);
+ const current=randomEnabled?paletteTemporary:(paletteTemporary>0?paletteTemporary:paletteSaved[active]);
+ const recent=paletteLastChosen===null?'Ingen nye valg':paletteLabel(paletteLastChosen);
+ document.getElementById('paletteModeName').textContent='Animasjon: '+paletteNames[active]+' · Variant: '+variant+' | Lagret farge: '+stored+' | Aktiv farge: '+paletteLabel(current)+' | Siste valg: '+recent+(randomEnabled?' · RANDOM':'');
  let id=1;
  const paletteIds=[[1,2,3,4,33,34,35,36],[5,6,7,8,37,38,39,40,41,42,43,44],Array.from({length:8},(_,i)=>9+i),Array.from({length:8},(_,i)=>17+i),Array.from({length:8},(_,i)=>25+i)];
  paletteGroups.forEach((group,g)=>{
@@ -3042,6 +3047,7 @@ async function togglePaletteReverse(){try{
 async function savePalette(id){try{
  const r=await fetch('/api/palette?mode='+active+'&id='+id,{method:'POST',cache:'no-store'});
  if(!r.ok)throw Error(await r.text());
+ paletteLastChosen=id;
  document.getElementById('paletteStatus').textContent=randomEnabled?'Palett valgt for alle effekter i RANDOM':(((id>=1&&id<=4)||(id>=33&&id<=36))?'Midlertidig global palett valgt':'Palett lagret for '+paletteNames[active]);
  await loadPalettes();
 }catch(e){document.getElementById('paletteStatus').textContent='Feil: '+e.message;}}
