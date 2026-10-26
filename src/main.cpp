@@ -3154,6 +3154,35 @@ function currentIconColors(mode){
  for(let g=0;g<groups.length;g++){const i=groups[g].indexOf(id);if(i>=0)return paletteGroups[g][1][i][1];}}
  return defaultIconColors[mode];
 }
+const rgbDefaults=[[18,60,80],[23,87,91],[40,105,94]];
+function setupRGBTest(){
+ const names=['NEDERST','MIDTEN','ØVERST'];
+ document.getElementById('rgbRows').innerHTML=names.map((name,i)=>
+ '<div class="rgbRow"><span class="zone">'+name+'</span>'+
+ ['R','G','B'].map((channel,j)=>'<label>'+channel+'<input type="number" inputmode="numeric" min="0" max="255" id="rgb'+i+j+'" value="'+rgbDefaults[i][j]+'"></label>').join('')+'</div>').join('');
+}
+async function applyRGBTest(){
+ const values=[];
+ for(let i=0;i<3;i++)for(let j=0;j<3;j++){
+  const el=document.getElementById('rgb'+i+j);
+  const v=Number(el.value);
+  if(!Number.isInteger(v)||v<0||v>255){document.getElementById('rgbTestStatus').textContent='Bruk heltall fra 0 til 255';el.focus();return;}
+  values.push(v);
+ }
+ try{
+  const r=await fetch('/api/rgb-test',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'enabled=1&values='+values.join(',')});
+  if(!r.ok)throw Error();
+  document.getElementById('rgbTestStatus').textContent='Statisk RGB-test aktiv';
+ }catch(e){document.getElementById('rgbTestStatus').textContent='Kunne ikke starte testen';}
+}
+async function stopRGBTest(){
+ try{
+  const r=await fetch('/api/rgb-test',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'enabled=0'});
+  if(!r.ok)throw Error();
+  document.getElementById('rgbTestStatus').textContent='Testen er av – musikkeffekten er tilbake';
+ }catch(e){document.getElementById('rgbTestStatus').textContent='Kunne ikke stoppe testen';}
+}
+setupRGBTest();
 function renderModeIcons(){
  // Static home icons: keep the original artwork, independent of palette and variant.
  // BPM AUTO keeps the newer heartbeat curve.
