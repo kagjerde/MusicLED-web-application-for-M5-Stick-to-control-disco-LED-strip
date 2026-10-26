@@ -359,6 +359,7 @@ volatile bool requestedParticleColor=false;
 struct Particle {float pos, vel, life; uint32_t start; uint8_t type; uint16_t hue; bool active;};
 static Particle particles[24];
 static uint32_t particleBeat=0, particleLastFrame=0;
+volatile uint32_t particleOnsetCount=0; // Raw detected bass peaks for responsive center effects
 static float particleGlow=0;
 static uint8_t particleNext=0;
 static uint32_t particleLastLaunch=0;
@@ -379,7 +380,7 @@ static float fireworkPower=0.0f; // Captured from music strength at rocket launc
 
 void resetParticles(){
   for(auto &p:particles)p.active=false;
-  particleBeat=bpmFlashCount;particleLastFrame=millis();particleGlow=0;
+  particleBeat=particleOnsetCount;particleLastFrame=millis();particleGlow=0;
   particleLastLaunch=0;rocketActive=false;particleBurst=0;fireworkPower=0.0f;
 }
 uint32_t particleRGB(uint16_t hue, uint8_t strength){
@@ -409,7 +410,8 @@ void particleSpawn(float pos,float vel,float life,uint8_t type,uint16_t hue){
 void updateParticles(){
  uint32_t now=millis();float dt=min(0.06f,(now-particleLastFrame)*.001f);particleLastFrame=now;
  strip.clear();
- uint32_t beats=bpmFlashCount-particleBeat;particleBeat=bpmFlashCount;
+ uint32_t beatSource=(particleVariant==0||particleVariant==1) ? particleOnsetCount : bpmFlashCount;
+ uint32_t beats=beatSource-particleBeat;particleBeat=beatSource;
  if(beats>3)beats=3;
  bool beat=beats>0 && audioIsActive;
  if(beat){
@@ -471,9 +473,9 @@ void updateParticles(){
    if(!p.active)continue;
    float age=(now-p.start)*.001f;
    if(p.type==0||p.type==1){
-     float speed=p.type==0?46.0f:27.0f;
+     float speed=p.type==0?70.0f:58.0f;
      float radius=age*speed;
-     float fade=max(0.0f,1.0f-age/(p.type==0?1.25f:2.9f));
+     float fade=max(0.0f,1.0f-age/(p.type==0?0.85f:1.45f));
      if(fade<=0){p.active=false;continue;}
      if(p.type==0){
        for(int side=-1;side<=1;side+=2)for(int w=-2;w<=2;w++){
@@ -1037,6 +1039,7 @@ float medianBPMInterval() {
 void acceptBPMOnset(uint32_t onsetTime) {
     if (!audioIsActive) return;
     bpmDetectedBeats++;
+    if (mode == COMET_BEAT) particleOnsetCount++; // Every detected peak triggers explosion/diffusion.
 
     if (lastBPMOnset != 0) {
         float rawInterval =
