@@ -1880,19 +1880,16 @@ uint32_t paletteColorAt(uint8_t id, uint16_t position) {
 }
 // Boost saturation by removing the shared white component from RGB.
 // Neutral colors stay neutral only in palettes explicitly containing white/grey.
+// Interpolate directly between palette stops in RGB (no white or black midpoint).
+// Remove only the shared white component; never boost the peak to 255,
+// because that washes out the intermediate colors in all multi-color palettes.
 uint32_t saturatedPaletteColor(uint32_t color, uint8_t id) {
-    // White/grey palette and intentionally white-containing palettes.
+    // Palettes deliberately containing white/grey retain those defined stops.
     if (id == 11 || id == 24 || id == 30 || id == 32) return color;
     uint8_t r=(color>>16)&255, g=(color>>8)&255, b=color&255;
-    uint8_t low=min(r,min(g,b)), high=max(r,max(g,b));
-    if (high==0) return 0;
-    if (high==low) return color;
-    // Strong saturation without making the gradient excessively dark.
-    uint8_t remove=(uint16_t)low*95/100;
-    r-=remove;g-=remove;b-=remove;
-    uint8_t peak=max(r,max(g,b));
-    if (peak==0) return 0;
-    return strip.Color((uint16_t)r*255/peak,(uint16_t)g*255/peak,(uint16_t)b*255/peak);
+    const uint8_t low=min(r,min(g,b));
+    const uint8_t remove=(uint16_t)low*95/100;
+    return strip.Color(r-remove,g-remove,b-remove);
 }
 void applyPaletteFrame(LedMode effect) {
     if (effect == ENERGY_STROBE) return; // Always white.
