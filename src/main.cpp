@@ -2080,8 +2080,15 @@ uint32_t paletteColorAt(uint8_t id, uint16_t position) {
         int v1=max((int)((from>>16)&255),max((int)((from>>8)&255),(int)(from&255)));
         int v2=max((int)((to>>16)&255),max((int)((to>>8)&255),(int)(to&255)));
         uint8_t value=(uint16_t)(v1*(256-fraction)+v2*fraction)/256;
-        // Keep the original palette brightness range but enforce strong chroma.
-        return strip.ColorHSV(hue,245,value);
+        // Preserve authored saturation and value, including dark lounge palettes.
+        auto saturationOf=[](uint32_t c)->uint8_t {
+            int r=(c>>16)&255,g=(c>>8)&255,b=c&255;
+            int hi=max(r,max(g,b)),lo=min(r,min(g,b));
+            return hi ? (uint8_t)((hi-lo)*255/hi) : 0;
+        };
+        uint8_t sat1=saturationOf(from),sat2=saturationOf(to);
+        uint8_t saturation=((uint16_t)sat1*(256-fraction)+(uint16_t)sat2*fraction)/256;
+        return strip.ColorHSV(hue,saturation,value);
     }
     const uint8_t r = (((from>>16)&255)*(256-fraction) + ((to>>16)&255)*fraction) >> 8;
     const uint8_t g = (((from>>8)&255)*(256-fraction) + ((to>>8)&255)*fraction) >> 8;
@@ -2098,8 +2105,8 @@ uint32_t saturatedPaletteColor(uint32_t color, uint8_t id) {
     if (id == 11 || id == 24 || id == 30 || id == 32) return color;
     uint8_t r=(color>>16)&255, g=(color>>8)&255, b=color&255;
     const uint8_t low=min(r,min(g,b));
-    const uint8_t remove=(uint16_t)low*95/100;
-    return strip.Color(r-remove,g-remove,b-remove);
+    (void)low;
+    return color; // Honor palette RGB; no artificial saturation boost.
 }
 void applyPaletteFrame(LedMode effect) {
     if (effect == ENERGY_STROBE || effect == RAINBOW_MUSIC) return; // Wave renders palettes in its own animated renderer.
@@ -2111,7 +2118,7 @@ void applyPaletteFrame(LedMode effect) {
         uint8_t r=(old>>16)&255, g=(old>>8)&255, b=old&255;
         uint8_t intensity = max(r,max(g,b));
         if (!intensity) continue;
-        // Palette changes hue only: retain the effect's original brightness envelope.
+        // Effect intensity modulates the palette's authored brightness, never overrides it.
         const uint16_t level = intensity;
         // Center-origin effects use a mirrored palette: center is stop 0,
 // both ends are the last stop. Reverse swaps center and ends.
@@ -2153,7 +2160,7 @@ void drawVUPeakDot(){
     uint8_t r=(color>>16)&255,g=(color>>8)&255,b=color&255;
     uint8_t maximum=max((int)r,max((int)g,(int)b));
     if(maximum==0)return;
-    color=strip.Color((uint16_t)r*255/maximum,(uint16_t)g*255/maximum,(uint16_t)b*255/maximum);
+    // Preserve palette brightness even for the VU peak marker.
     float displayPeak=expandVU(vuPeak);
     if(vuCentered){
         int half=NUM_LEDS/2;
@@ -2845,7 +2852,7 @@ h1{font-size:23px;letter-spacing:.04em;margin:0}.sub{font-size:12px;color:#8e9db
 .pad:active{transform:translateY(5px);box-shadow:inset 0 1px #ffffff16,0 2px 0 #080c17}
 .pad.active{background:linear-gradient(145deg,#174a68,#133047);border-color:#55d9ff;box-shadow:inset 0 0 0 1px #55d9ff55,0 6px 0 #071b2b,0 0 18px #28b9fa2e}
 .pad .symbol{width:55px;height:55px;display:grid;place-items:center}.symbol svg{width:52px;height:52px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
-.pad .name{font-size:13px;font-weight:750;letter-spacing:.065em;text-align:center}.pad .hint{font-size:10px;color:#a1afc6;margin-top:-10px}
+.pad .name{font-size:13px;font-weight:750;letter-spacing:.065em;text-align:center}.pad .hint{font-size:10px;font-weight:500;color:#a1afc6;margin-top:-10px;letter-spacing:.025em}
 .footer{margin-top:auto;padding-top:25px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:center;color:#93a2bb;font-size:13px}
 .randomBtn{border:1px solid #38455f;background:#202a40;color:#d9e8ff;width:100%;height:52px;padding:0 6px;border-radius:14px;display:flex;align-items:center;gap:9px;font:600 12px system-ui;letter-spacing:.05em;touch-action:manipulation}.randomBtn.on{background:#174a68;border-color:#55d9ff;color:#fff;box-shadow:0 0 12px #28b9fa44}.randomBtn svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .gear{border:1px solid #38455f;background:#202a40;color:white;width:100%;height:52px;border-radius:15px;display:grid;place-items:center;text-decoration:none}
@@ -2882,7 +2889,7 @@ h1{font-size:23px;letter-spacing:.04em;margin:0}.sub{font-size:12px;color:#8e9db
 <button class="pad" data-mode="2" onclick="choose(2)"><span class="symbol"><svg viewBox="0 0 64 64"><path d="M11 36 Q30 2 57 16 Q40 13 28 30 Q23 36 21 42 Z" fill="currentColor" stroke="none"/><path d="M12 30l4 8 9 1-7 6 2 9-8-5-8 5 2-9-7-6 9-1z" transform="translate(6 -8)" fill="currentColor" stroke="none"/></svg></span><span class="name">PARTICLES</span><span class="hint">RAINBOW · BASS EXPLOSION</span></button>
 <button class="pad" data-mode="3" onclick="choose(3)"><span class="symbol"><svg viewBox="0 0 64 64"><path d="M9 33h11l7-16 10 31 7-15h11"/><path d="M22 9a25 25 0 1 1-13 43"/></svg></span><span class="name">BPM AUTO</span><span class="hint">WHITE</span></button>
 <button class="pad" data-mode="4" onclick="choose(4)"><span class="symbol"><svg viewBox="0 0 64 64"><path d="M36 5 14 35h16l-3 24 23-34H34z"/></svg></span><span class="name">ENERGY</span><span class="hint">STROBE</span></button>
-<button class="pad" data-mode="5" onclick="choose(5)"><span class="symbol"><svg viewBox="0 0 64 64"><path d="M34 5c4 14-6 18-3 27 6-3 9-9 10-14 19 20 15 37-8 40C10 59 8 42 18 29c1 11 7 13 9 13-5-14 0-27 7-37z"/></svg></span><span class="name">FIRE</span><span class="hint">&amp; SPARKS</span></button>
+<button class="pad" data-mode="5" onclick="choose(5)"><span class="symbol"><svg viewBox="0 0 64 64"><path d="M34 5c4 14-6 18-3 27 6-3 9-9 10-14 19 20 15 37-8 40C10 59 8 42 18 29c1 11 7 13 9 13-5-14 0-27 7-37z"/></svg></span><span class="name">FIRE</span><span class="hint">STANDARD</span></button>
 </section><footer class="footer"><button type="button" id="randomBtn" class="randomBtn" onclick="randomPress()" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M4 7h3c5 0 5 10 10 10h3m-3-3 3 3-3 3M4 17h3c2 0 3-2 4-4m2-3c1-2 2-3 4-3h3m-3-3 3 3-3 3"/></svg><span>RANDOM</span></button><button type="button" class="gear" onclick="showPalettes()" aria-label="Fargepaletter" title="Fargepaletter"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.3 16.7 18.8 2.3c.6-.8 1.5-.8 2-.3s.5 1.3-.1 2.1L9.2 18.4Z"/><path d="m6.8 16.4-1.7 1.7c-1.3-.1-2.8.6-3.3 2.1-.3.8-.7 1.3-1.1 1.7 3.2 1 6.3.4 8-2.3l.7-1.4"/><path d="m6.7 15.9 2.9 2.7"/></svg></button><button type="button" class="gear" onclick="showSettings()" aria-label="Innstillinger"><svg viewBox="0 0 24 24"><path d="M10 2h4l.8 2.6 2 .9 2.4-1.2 2.8 2.8-1.2 2.4.9 2L24 12l-2.3 1.5-.9 2 1.2 2.4-2.8 2.8-2.4-1.2-2 .9L14 23h-4l-.8-2.6-2-.9-2.4 1.2L2 17.9l1.2-2.4-.9-2L0 12l2.3-1.5.9-2L2 6.1l2.8-2.8 2.4 1.2 2-.9z" transform="translate(1 1) scale(.91)"/><circle cx="12" cy="12" r="3"/></svg></button></footer></section>
 <section id="paletteView" hidden>
 <header class="settingsTop"><button type="button" onclick="showHome()">← Tilbake</button><h2>Fargepaletter</h2></header>
@@ -3105,31 +3112,10 @@ function currentIconColors(mode){
  return defaultIconColors[mode];
 }
 function renderModeIcons(){
- for(let mode=0;mode<6;mode++){
- const pad=document.querySelector('.pad[data-mode="'+mode+'"]');if(!pad)continue;
- const colors=currentIconColors(mode), col=i=>colors[i%colors.length];
- let drawing='';
- if(mode===0){
-  drawing=waveStyle===0?'<path d="M3 35 Q11 7 19 35 T35 35 T51 35 T67 35" fill="none" stroke="url(#g)" stroke-width="5"/><path d="M3 49 Q11 21 19 49 T35 49 T51 49 T67 49" fill="none" stroke="url(#g)" stroke-width="3"/>':
-  '<path d="M7 33 H57" stroke="url(#g)" stroke-width="2"/><circle cx="'+(waveStyle===1?47:waveStyle===2?17:32)+'" cy="33" r="7" fill="'+col(0)+'"/><path d="M9 44 L22 44 M40 22 L55 22" stroke="'+col(1)+'" stroke-width="4"/>';
- }else if(mode===1){
-  drawing=(vuStyle?'<rect x="29" y="8" width="6" height="48" fill="'+col(0)+'"/><rect x="19" y="19" width="7" height="37" fill="'+col(1)+'"/><rect x="38" y="19" width="7" height="37" fill="'+col(1)+'"/><rect x="9" y="36" width="7" height="20" fill="'+col(2)+'"/><rect x="48" y="36" width="7" height="20" fill="'+col(2)+'"/>':
-  [12,24,36,48].map((x,i)=>'<rect x="'+x+'" y="'+(45-i*10)+'" width="8" height="'+(11+i*10)+'" rx="2" fill="'+col(i)+'"/>').join(''));
- }else if(mode===2){
-  if(particleStyle===4)drawing='<circle cx="13" cy="48" r="5" fill="'+col(0)+'"/><circle cx="30" cy="21" r="5" fill="'+col(1)+'"/><circle cx="50" cy="39" r="5" fill="'+col(2)+'"/><path d="M8 51 Q20 4 32 20 T56 48" stroke="url(#g)" fill="none" stroke-dasharray="3 6" stroke-width="2"/>';
-  else if(particleStyle===5)drawing='<circle cx="32" cy="32" r="5" fill="'+col(0)+'"/>'+[0,45,90,135,180,225,270,315].map((a,i)=>{const rad=a*Math.PI/180;return '<path d="M'+(32+9*Math.cos(rad))+' '+(32+9*Math.sin(rad))+' L'+(32+25*Math.cos(rad))+' '+(32+25*Math.sin(rad))+'" stroke="'+col(i)+'" stroke-width="3" stroke-linecap="round"/>';}).join('');
-  else if(particleStyle===2)drawing='<circle cx="32" cy="32" r="23" fill="url(#g)" opacity=".45"/><circle cx="32" cy="32" r="12" fill="'+col(0)+'"/>';
-  else if(particleStyle===3)drawing='<path d="M6 45 L29 20 M18 54 L49 15 M34 53 L59 27" stroke="url(#g)" stroke-width="5" stroke-linecap="round"/>';
-  else drawing='<circle cx="32" cy="32" r="6" fill="'+col(0)+'"/><circle cx="32" cy="32" r="17" fill="none" stroke="'+col(1)+'" stroke-width="4"/><circle cx="32" cy="32" r="27" fill="none" stroke="'+col(2)+'" stroke-width="3"/>';
- }else if(mode===3){
-  drawing=bpmStyle===0?'<path d="M4 33 H16 L24 13 L35 51 L44 33 H60" fill="none" stroke="url(#g)" stroke-width="5"/>':'<rect x="11" y="11" width="42" height="42" rx="9" fill="url(#g)"/>';
- }else if(mode===4){
-  drawing='<path d="M36 5 14 35 H30 L27 59 50 25 H34 Z" fill="url(#g)"/>';
-  if(energyCount>1)drawing+='<text x="51" y="60" font-size="15" fill="'+col(0)+'" text-anchor="middle">'+energyCount+'</text>';
- }else drawing='<path d="M34 5 C38 19 25 24 31 33 C37 28 39 23 41 17 C60 38 50 59 33 59 C10 59 8 42 18 29 C18 40 22 43 27 43 C22 30 27 18 34 5 Z" fill="url(#g)"/>';
- const stops=colors.map((c,i)=>'<stop offset="'+(100*i/Math.max(1,colors.length-1))+'%" stop-color="'+c+'"/>').join('');
- pad.querySelector('.symbol').innerHTML='<svg viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">'+stops+'</linearGradient></defs>'+drawing+'</svg>';
- }
+ // Static home icons: keep the original artwork, independent of palette and variant.
+ // BPM AUTO keeps the newer heartbeat curve.
+ const bpm=document.querySelector('.pad[data-mode="3"] .symbol');
+ if(bpm)bpm.innerHTML='<svg viewBox="0 0 64 64" aria-hidden="true"><path d="M4 33 H16 L24 13 L35 51 L44 33 H60" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 }
 function updateVUHint(){document.querySelector('[data-mode="1"] .hint').textContent=vuStyle?'CENTER':'NORMAL';}
 function updateParticleHint(){document.querySelector('[data-mode="2"] .hint').textContent=particleVariants[particleStyle];}
@@ -3156,12 +3142,12 @@ async function choose(n){try{
  highlight(n);updateVUHint();updateWaveHint();updateParticleHint();renderModeIcons();
  document.querySelector('[data-mode="3"] .hint').textContent=bpmStyles[bpmStyle];
  document.querySelector('[data-mode="4"] .hint').textContent=energyCount+' FLASH'+(energyCount===1?'':'ES');
- document.querySelector('[data-mode="5"] .hint').textContent=fireGlitter?'FIRE + BLINK':'FIRE';
+ document.querySelector('[data-mode="5"] .hint').textContent=fireGlitter?'WITH BLINK':'STANDARD';
 }catch(e){console.warn('Ingen kontakt med MusicLED',e);}}
 highlight(active);updateVUHint();updateWaveHint();updateParticleHint();renderModeIcons();
 document.querySelector('[data-mode="3"] .hint').textContent=bpmStyles[bpmStyle];
 document.querySelector('[data-mode="4"] .hint').textContent=energyCount+' FLASH'+(energyCount===1?'':'ES');
-document.querySelector('[data-mode="5"] .hint').textContent=fireGlitter?'FIRE + BLINK':'FIRE';
+document.querySelector('[data-mode="5"] .hint').textContent=fireGlitter?'WITH BLINK':'STANDARD';
 async function refreshBPM(){try{const r=await fetch('/api/bpm',{cache:'no-store'});if(!r.ok)return;const d=await r.json();document.getElementById('bpmDisplay').textContent=d.bpm>0?Math.round(d.bpm)+' BPM':'-- BPM';document.getElementById('bpmSource').textContent=d.manual?'MANUAL':'AUTO';document.getElementById('tapBpm').textContent=d.bpm>0?Math.round(d.bpm)+' BPM':'-- BPM';}catch(e){}}
 refreshBPM();syncRandom();setInterval(refreshBPM,3000);setInterval(syncRandom,2000);
 </script></body></html>)HTML");
