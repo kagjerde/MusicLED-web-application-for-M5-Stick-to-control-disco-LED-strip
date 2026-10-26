@@ -2113,6 +2113,17 @@ uint32_t saturatedPaletteColor(uint32_t color, uint8_t id) {
         uint8_t remove=(uint16_t)lo*55/100;
         r-=remove;g-=remove;b-=remove;
     }
+    // Calibrated dark stops are tiny raw RGB values (typically 1..8).
+    // The RGB test bypasses music modulation, but both paths still pass
+    // through NeoPixel's global brightness (normally 150/255).
+    // Lift these stops before the music envelope to avoid double dimming
+    // and integer truncation. Keep hue ratios and the global dimmer intact.
+    if (id==33 || id==34 || id==37 || id==38) {
+        const uint16_t gain=12;
+        return strip.Color(min(255,(int)r*gain),
+                           min(255,(int)g*gain),
+                           min(255,(int)b*gain));
+    }
     // Approximate perceptual darkening (value^1.5), shared by all palettes.
     // Bright stops remain bright; dark stops remain genuinely dark.
     // Nuanced dark colors retain enough low-level detail to show their
