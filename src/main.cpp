@@ -402,6 +402,14 @@ void resetParticles(){
   for(auto &rocket:fireworkRockets)rocket.active=false;
 }
 uint32_t particleRGB(uint16_t hue, uint8_t strength){
+  // Moving particles (Diffusion and Bouncing Balls) retain one exact palette
+  // stop for their entire lifetime, rather than changing color by LED position.
+  uint8_t id=activePalette(COMET_BEAT);
+  if (id && (particleVariant==3 || particleVariant==4)) {
+    uint32_t c=saturatedPaletteColor(paletteStopColor(id,(uint32_t)hue*paletteStopCount(id)/65536UL),id);
+    return strip.Color(((c>>16)&255)*strength/255,
+                       ((c>>8)&255)*strength/255,(c&255)*strength/255);
+  }
   uint8_t r=0,g=0,b=0;
   switch(particleColor){
     case 0:r=strength;g=(uint8_t)(strength*.85f);b=(uint8_t)(strength*.45f);break;
@@ -2042,7 +2050,7 @@ uint32_t saturatedPaletteColor(uint32_t color, uint8_t id) {
 }
 void applyPaletteFrame(LedMode effect) {
     if (effect == ENERGY_STROBE || effect == RAINBOW_MUSIC) return; // Wave renders palettes in its own animated renderer.
-    if (effect == COMET_BEAT && particleVariant == 5) return; // Firework fragments use individual palette-stop colors.
+    if (effect == COMET_BEAT && (particleVariant == 3 || particleVariant == 4 || particleVariant == 5)) return; // Moving particles use fixed palette-stop colors.
     uint8_t id = activePalette((uint8_t)effect);
     if (!id || id > 40) return; // DEFAULT retains original effect colors.
     for (uint16_t i=0; i<NUM_LEDS; i++) {
