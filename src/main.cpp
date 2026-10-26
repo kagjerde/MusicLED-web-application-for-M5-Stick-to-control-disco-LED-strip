@@ -2896,7 +2896,14 @@ h1{font-size:23px;letter-spacing:.04em;margin:0}.sub{font-size:12px;color:#8e9db
 .paletteSwatch i{flex:1;min-width:0}
 .paletteLabel{display:block;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}
 .paletteGroup{margin:9px 0}.paletteGroup h3{font-size:12px;margin:0 0 4px}
-.pad .hint{display:block!important}.paletteHelp{color:#a9b9d4;font-size:11px;margin:6px 0}#paletteView .settingsTop{margin-bottom:6px}#paletteView .settingsTop h2{font-size:18px}#paletteView{padding-bottom:8px}
+.pad .hint{display:block!important}
+.rgbTester{margin-top:16px;padding:14px;border:1px solid #35405c;border-radius:16px;background:#172033}
+.rgbTester strong{font-size:13px;letter-spacing:.08em}.rgbTester p{font-size:11px;color:#a1afc6;margin:4px 0 10px}
+.rgbRow{display:grid;grid-template-columns:62px repeat(3,minmax(0,1fr));gap:7px;align-items:end;margin:9px 0}
+.rgbRow .zone{font-size:11px;color:#a1afc6;padding-bottom:10px}.rgbRow label{display:flex;flex-direction:column;gap:3px;font-size:10px;color:#a1afc6}
+.rgbRow input{width:100%;min-width:0;box-sizing:border-box;background:#0e1728;color:#fff;border:1px solid #42506b;border-radius:7px;padding:8px 3px;text-align:center;font-size:14px}
+.rgbActions{display:flex;gap:8px;margin-top:12px}.rgbActions button{flex:1;border:0;border-radius:9px;padding:11px 5px;font-size:11px;font-weight:700;color:white;background:#176f9a}.rgbActions button+button{background:#38445b}
+#rgbTestStatus{font-size:11px;color:#a1afc6;margin-top:9px}.paletteHelp{color:#a9b9d4;font-size:11px;margin:6px 0}#paletteView .settingsTop{margin-bottom:6px}#paletteView .settingsTop h2{font-size:18px}#paletteView{padding-bottom:8px}
 
 #settingsView{padding:4px 2px 30px}
 .settingsTop{display:flex;align-items:center;gap:16px;margin-bottom:16px}
@@ -2920,6 +2927,12 @@ h1{font-size:23px;letter-spacing:.04em;margin:0}.sub{font-size:12px;color:#8e9db
 <button class="pad" data-mode="3" onclick="choose(3)"><span class="symbol"><svg viewBox="0 0 64 64"><path d="M9 33h11l7-16 10 31 7-15h11"/><path d="M22 9a25 25 0 1 1-13 43"/></svg></span><span class="name">BPM AUTO</span><span class="hint">WHITE</span></button>
 <button class="pad" data-mode="4" onclick="choose(4)"><span class="symbol"><svg viewBox="0 0 64 64"><path d="M36 5 14 35h16l-3 24 23-34H34z"/></svg></span><span class="name">ENERGY</span><span class="hint">STROBE</span></button>
 <button class="pad" data-mode="5" onclick="choose(5)"><span class="symbol"><svg viewBox="0 0 64 64"><path d="M34 5c4 14-6 18-3 27 6-3 9-9 10-14 19 20 15 37-8 40C10 59 8 42 18 29c1 11 7 13 9 13-5-14 0-27 7-37z"/></svg></span><span class="name">FIRE</span><span class="hint">STANDARD</span></button>
+</section>
+<section class="rgbTester">
+ <strong>RGB TEST</strong><p>Tre statiske felt på LED-stripen</p>
+ <div id="rgbRows"></div>
+ <div class="rgbActions"><button type="button" onclick="applyRGBTest()">VIS FARGENE</button><button type="button" onclick="stopRGBTest()">TILBAKE TIL MUSIKK</button></div>
+ <div id="rgbTestStatus" aria-live="polite">Testen er av</div>
 </section><footer class="footer"><button type="button" id="randomBtn" class="randomBtn" onclick="randomPress()" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M4 7h3c5 0 5 10 10 10h3m-3-3 3 3-3 3M4 17h3c2 0 3-2 4-4m2-3c1-2 2-3 4-3h3m-3-3 3 3-3 3"/></svg><span>RANDOM</span></button><button type="button" class="gear" onclick="showPalettes()" aria-label="Fargepaletter" title="Fargepaletter"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.3 16.7 18.8 2.3c.6-.8 1.5-.8 2-.3s.5 1.3-.1 2.1L9.2 18.4Z"/><path d="m6.8 16.4-1.7 1.7c-1.3-.1-2.8.6-3.3 2.1-.3.8-.7 1.3-1.1 1.7 3.2 1 6.3.4 8-2.3l.7-1.4"/><path d="m6.7 15.9 2.9 2.7"/></svg></button><button type="button" class="gear" onclick="showSettings()" aria-label="Innstillinger"><svg viewBox="0 0 24 24"><path d="M10 2h4l.8 2.6 2 .9 2.4-1.2 2.8 2.8-1.2 2.4.9 2L24 12l-2.3 1.5-.9 2 1.2 2.4-2.8 2.8-2.4-1.2-2 .9L14 23h-4l-.8-2.6-2-.9-2.4 1.2L2 17.9l1.2-2.4-.9-2L0 12l2.3-1.5.9-2L2 6.1l2.8-2.8 2.4 1.2 2-.9z" transform="translate(1 1) scale(.91)"/><circle cx="12" cy="12" r="3"/></svg></button></footer></section>
 <section id="paletteView" hidden>
 <header class="settingsTop"><button type="button" onclick="showHome()">← Tilbake</button><h2>Fargepaletter</h2></header>
