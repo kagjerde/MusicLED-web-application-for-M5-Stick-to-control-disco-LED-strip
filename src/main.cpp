@@ -1817,15 +1817,16 @@ static const uint32_t palettes4[][4] = {
     {0x9c4637, 0xd29b6f, 0xe8d8b8, 0x647e73}, // 9
 };
 
+// Saturated base hues: effect brightness scales from black to this exact RGB value.
 static const uint32_t palettes1[][1] = {
-    {0xff3030}, // 1
-    {0x8bcaff}, // 2
-    {0xa2ffc1}, // 3
-    {0xe1b7ff}, // 4
-    {0xffe29b}, // 5
-    {0xa4f7ff}, // 6
-    {0xffd1e8}, // 7
-    {0xffffff}, // 8
+    {0xff0000}, // Red
+    {0x0000ff}, // Blue
+    {0x00ff00}, // Green
+    {0x8000ff}, // Purple
+    {0xffa000}, // Amber
+    {0x00ffff}, // Cyan
+    {0xff0080}, // Pink
+    {0xffffff}, // White
 };
 
 static const uint32_t palettes2[][2] = {
