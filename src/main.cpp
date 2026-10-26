@@ -1889,6 +1889,7 @@ void updateFFT() {
 // Fire2012-inspired one-dimensional flame with audio-triggered sparks.
 // Runs only on the LED task: no network polling or extra audio sampling.
 uint8_t fireHeat[MAX_LEDS] = {};
+volatile bool fireGlitterEnabled = false;
 
 void updateFireSparks() {
     // Cooling and upward diffusion. LED 0 is the base of the flame.
@@ -1917,6 +1918,7 @@ void updateFireSparks() {
 
 // Music-reactive glitter overlay: survives palette conversion.
 void drawFireGlitter() {
+    if (!fireGlitterEnabled) return;
     static uint32_t born[MAX_LEDS] = {};
     static uint16_t lifetime[MAX_LEDS] = {};
     static uint32_t lastBassOnset = 0;
@@ -1929,7 +1931,11 @@ void drawFireGlitter() {
     // No continuous random glitter: most sparkles follow detected bass attacks.
     const int count = (audioIsActive && newBeats>0 && random(100)<(int)(35+40*activity)) ? 1 : 0;
     const int burst = audioIsActive ? (int)newBeats * (activity>0.5f ? 2 : 1) : 0;
-    for (int j = 0; j < count + burst; ++j) {
+    static uint8_t sparkRemainder = 0;
+    const int baseCount = count + burst;
+    const int totalCount = baseCount + (baseCount + sparkRemainder) / 5;
+    sparkRemainder = (baseCount + sparkRemainder) % 5;
+    for (int j = 0; j < totalCount; ++j) {
         int i = random(NUM_LEDS);
         born[i] = now ? now : 1;
         lifetime[i] = random(500, 851);
@@ -1943,8 +1949,8 @@ void drawFireGlitter() {
         uint8_t level = (uint16_t)pulse * fade / 255;
         uint32_t old = strip.getPixelColor(i);
         uint8_t r = max((int)((old >> 16) & 255), (int)level);
-        uint8_t g = max((int)((old >> 8) & 255), (int)((uint16_t)level * 94 / 100));
-        uint8_t b = max((int)(old & 255), (int)((uint16_t)level * 75 / 100));
+        uint8_t g = max((int)((old >> 8) & 255), (int)level);
+        uint8_t b = max((int)(old & 255), (int)level);
         strip.setPixelColor(i, strip.Color(r,g,b));
     }
 }
@@ -2317,7 +2323,13 @@ void ledTask(void* parameter) {
                 }
 
                 applyPaletteFrame(currentMode);
-                if(currentMode==FIRE_SPARKS)drawFireGlitter();
+                if(currentMode==FIRE_SPARKS){
+                    for(int i=0;i<NUM_LEDS;++i){
+                        uint32_t c=strip.getPixelColor(i);
+                        strip.setPixelColor(i,strip.Color(((c>>16)&255)*4/5,((c>>8)&255)*4/5,(c&255)*4/5));
+                    }
+                    drawFireGlitter();
+                }
                 if(currentMode==VU_METER)drawVUPeakDot();
                 strip.show();
             }
@@ -2928,7 +2940,7 @@ let particleIndex=)HTML");
 let bpmStyle=0;
 let randomEnabled=false;
 function showRandom(enabled){randomEnabled=enabled;const b=document.getElementById('randomBtn');b.classList.toggle('on',enabled);b.setAttribute('aria-pressed',String(enabled));}
-async function syncRandom(){try{const r=await fetch('/api/random-state',{cache:'no-store'});if(!r.ok)return;const d=await r.json();showRandom(d.enabled);highlight(d.mode);waveStyle=d.waveVariant;waveIndex=d.waveColor;vuStyle=d.vuCentered?1:0;vuIndex=d.vuColor;particleStyle=d.particleVariant;particleIndex=d.particleColor;bpmStyle=d.bpmDisplayVariant;energyCount=d.energyFlashes;updateVUHint();updateWaveHint();updateParticleHint();renderModeIcons();document.querySelector('[data-mode="3"] .hint').textContent=bpmStyles[bpmStyle];document.querySelector('[data-mode="4"] .hint').textContent=energyCount+' FLASH'+(energyCount===1?'':'ES');}catch(e){}}
+async function syncRandom(){try{const r=await fetch('/api/random-state',{cache:'no-store'});if(!r.ok)return;const d=await r.json();showRandom(d.enabled);highlight(d.mode);waveStyle=d.waveVariant;waveIndex=d.waveColor;vuStyle=d.vuCentered?1:0;vuIndex=d.vuColor;particleStyle=d.particleVariant;particleIndex=d.particleColor;bpmStyle=d.bpmDisplayVariant;energyCount=d.energyFlashes;fireGlitter=!!d.fireGlitter;updateVUHint();updateWaveHint();updateParticleHint();renderModeIcons();document.querySelector('[data-mode="3"] .hint').textContent=bpmStyles[bpmStyle];document.querySelector('[data-mode="4"] .hint').textContent=energyCount+' FLASH'+(energyCount===1?'':'ES');}catch(e){}}
 async function randomPress(){try{const r=await fetch('/api/random-next',{cache:'no-store'});if(r.ok){await syncRandom();await loadPalettes();}}catch(e){}}
 function showSettings(){
  document.getElementById('homeBpm').hidden=true;
@@ -3005,6 +3017,7 @@ const paletteGroups=[
  ['Navy / Copper',['#284a9b','#284a9b','#b56b39','#b56b39']]
  ]]
 ];
+let fireGlitter=false;
 let paletteSaved=[0,0,0,0,0,0],paletteTemporary=-1,paletteReversed=[false,false,false,false,false,false];
 
 const paletteNames=['WAVE','VU METER','PARTICLES','BPM AUTO','ENERGY','FIRE'];
@@ -3013,7 +3026,7 @@ function renderPalettes(){
  const reverseButton=document.getElementById('paletteReverseButton');
  reverseButton.textContent=paletteReversed[active]?'⇅ Reversert':'⇅ Reverser';
  document.getElementById('paletteDefaultButton').setAttribute('aria-pressed',String(randomEnabled?paletteTemporary===0:paletteTemporary<0&&paletteSaved[active]===0));
- const variant=active===0?waveVariants[waveStyle]:active===1?(vuStyle?'CENTER':'NORMAL'):active===2?particleVariants[particleStyle]:active===3?bpmStyles[bpmStyle]:active===4?(energyCount+' FLASH'+(energyCount===1?'':'ES')):'FIRE & SPARKS';
+ const variant=active===0?waveVariants[waveStyle]:active===1?(vuStyle?'CENTER':'NORMAL'):active===2?particleVariants[particleStyle]:active===3?bpmStyles[bpmStyle]:active===4?(energyCount+' FLASH'+(energyCount===1?'':'ES')):(fireGlitter?'FIRE + BLINK':'FIRE');
  const stored=paletteLabel(paletteSaved[active]);
  const current=randomEnabled?paletteTemporary:(paletteTemporary>0?paletteTemporary:paletteSaved[active]);
 
@@ -3130,7 +3143,7 @@ async function choose(n){try{
  else if(already && n===1)url='/api/vu-variant';
  else if(already && n===2)url='/api/particle-variant';
  else if(already && n===3)url='/api/bpm-variant';
- // ENERGY cycles flashes through /api/mode. FIRE has no variant.
+ // ENERGY and FIRE cycle variants through /api/mode.
  const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw Error();
  if(already){
    if(n===0)waveStyle=(waveStyle+1)%waveVariants.length;
@@ -3138,16 +3151,17 @@ async function choose(n){try{
    else if(n===2)particleStyle=(particleStyle+1)%particleVariants.length;
    else if(n===3)bpmStyle=1-bpmStyle;
    else if(n===4)energyCount=energyCount%4+1;
+   else if(n===5)fireGlitter=!fireGlitter;
  }
  highlight(n);updateVUHint();updateWaveHint();updateParticleHint();renderModeIcons();
  document.querySelector('[data-mode="3"] .hint').textContent=bpmStyles[bpmStyle];
  document.querySelector('[data-mode="4"] .hint').textContent=energyCount+' FLASH'+(energyCount===1?'':'ES');
- document.querySelector('[data-mode="5"] .hint').textContent='FIRE & SPARKS';
+ document.querySelector('[data-mode="5"] .hint').textContent=fireGlitter?'FIRE + BLINK':'FIRE';
 }catch(e){console.warn('Ingen kontakt med MusicLED',e);}}
 highlight(active);updateVUHint();updateWaveHint();updateParticleHint();renderModeIcons();
 document.querySelector('[data-mode="3"] .hint').textContent=bpmStyles[bpmStyle];
 document.querySelector('[data-mode="4"] .hint').textContent=energyCount+' FLASH'+(energyCount===1?'':'ES');
-document.querySelector('[data-mode="5"] .hint').textContent='FIRE & SPARKS';
+document.querySelector('[data-mode="5"] .hint').textContent=fireGlitter?'FIRE + BLINK':'FIRE';
 async function refreshBPM(){try{const r=await fetch('/api/bpm',{cache:'no-store'});if(!r.ok)return;const d=await r.json();document.getElementById('bpmDisplay').textContent=d.bpm>0?Math.round(d.bpm)+' BPM':'-- BPM';document.getElementById('bpmSource').textContent=d.manual?'MANUAL':'AUTO';document.getElementById('tapBpm').textContent=d.bpm>0?Math.round(d.bpm)+' BPM':'-- BPM';}catch(e){}}
 refreshBPM();syncRandom();setInterval(refreshBPM,3000);setInterval(syncRandom,2000);
 </script></body></html>)HTML");
@@ -3364,7 +3378,8 @@ void beginWiFi() {
             ",\"particleColor\":" + String((int)particleColor) +
             ",\"bpmColor\":" + String((int)bpmColorVariant) +
             ",\"bpmDisplayVariant\":" + String((int)bpmDisplayVariant) +
-            ",\"energyFlashes\":" + String((int)energyFlashVariant) + "}";
+            ",\"energyFlashes\":" + String((int)energyFlashVariant) +
+            ",\"fireGlitter\":" + (fireGlitterEnabled ? "true" : "false") + "}";
         webServer.sendHeader("Cache-Control", "no-store");
         webServer.send(200, "application/json", json);
     });
@@ -3376,6 +3391,7 @@ void beginWiFi() {
             webServer.send(400, "text/plain", "Invalid mode"); return;
         }
         if (value == ENERGY_STROBE && mode == ENERGY_STROBE) requestedEnergyCycle = true;
+        else if (value == FIRE_SPARKS && mode == FIRE_SPARKS) fireGlitterEnabled = !fireGlitterEnabled;
         else requestedMode = value;
         webServer.send(200, "text/plain", "OK");
     });
