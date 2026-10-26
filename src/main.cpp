@@ -1417,7 +1417,7 @@ void analyzeAudio() {
         mode == VU_METER
     ) {
         updateAGC(rms, dt);
-        updateAutoColor();
+        // Palette selection stays fixed; legacy VU auto-color cycling is disabled.
         return;
     }
 
@@ -1902,6 +1902,14 @@ static const uint32_t palettes8[][8] = {
     {0x27104e, 0x702b86, 0xb33986, 0xf25f5c, 0xff914d, 0xffcf70, 0xf76d39, 0x38164b}, // 5
     {0x350000, 0x9c1600, 0xff4000, 0xff8c00, 0xffe080, 0xff5400, 0xb32100, 0x350000}, // 6
     {0x08213e, 0x007c80, 0x00bb83, 0x8bffba, 0x8a53d6, 0x1bb1a7, 0x3b358e, 0x08213e}, // 7
+    {0x071b2d,0x123c50,0x17575b,0x28695e,0x193d52,0x142a43,0x0a2236,0x071b2d}, // 33 Midnight Petrol (temporary)
+    {0x260b23,0x4a1938,0x6a304b,0x67402b,0x42283e,0x2b1737,0x35102a,0x260b23}, // 34 Velvet Lounge (temporary)
+    {0x073e55,0x087f83,0x1aa89a,0xc7444e,0xe16d51,0xa93555,0x265b80,0x073e55}, // 35 Teal / Coral (temporary)
+    {0x102a8c,0x244bd0,0x4a64db,0xd16a19,0xe38a27,0xb64a24,0x33449b,0x102a8c}, // 36 Cobalt / Copper (temporary)
+    {0x120c24,0x35224d,0x57335e,0x66415b,0x332f56,0x1a2441,0x281532,0x120c24}, // 37 Plum Night
+    {0x071e25,0x164048,0x275954,0x71613d,0x59472c,0x23434a,0x112e3a,0x071e25}, // 38 Deep Brass
+    {0x172e8b,0x3259b4,0x548ac4,0xbb593e,0xd08043,0x9b3d55,0x3a4d9e,0x172e8b}, // 39 Indigo / Terracotta
+    {0x174b4a,0x2b7e69,0x47977a,0x9e3563,0xbd4973,0x7a3c77,0x245a67,0x174b4a}, // 40 Jade / Berry
 };
 
 static const uint32_t palettes4[][4] = {
@@ -1934,27 +1942,29 @@ static const uint32_t palettes2[][2] = {
     {0xff0090, 0x00cfff}, // 3
     {0x7900ff, 0x00e647}, // 4
     {0xff7500, 0x00cccc}, // 5
-    {0xff0000, 0xffffff}, // 6
+    {0xc92d42, 0x277b9a}, // 6 Burgundy / Steel Blue
     {0xffbc00, 0x7000ff}, // 7
-    {0x004aff, 0xffffff}, // 8
+    {0x284a9b, 0xb56b39}, // 8 Navy / Copper
 };
 
 // One continuous gradient from bottom to top; no repeated patterns.
-uint8_t paletteStopCount(uint8_t id) {return id<=7?8:id<=16?4:id<=24?1:2;}
+uint8_t paletteStopCount(uint8_t id) {return (id<=7||id>=33)?8:id<=16?4:id<=24?1:2;}
 uint32_t paletteStopColor(uint8_t id,uint32_t beat) {
-    if(id<1||id>32) return strip.Color(255,255,255);
+    if(id<1||id>40) return strip.Color(255,255,255);
     uint8_t count=paletteStopCount(id);
     uint8_t index=(uint8_t)(beat%count);
     if(id<=7)return palettes8[id-1][index];
+    if(id>=33)return palettes8[id-26][index];
     if(id<=16)return palettes4[id-8][index];
     if(id<=24)return palettes1[id-17][0];
     return palettes2[id-25][index];
 }
 uint32_t paletteColorAt(uint8_t id, uint16_t position) {
-    if (id < 1 || id > 32) return 0;
+    if (id < 1 || id > 40) return 0;
     const uint32_t* colors;
     uint8_t count;
     if (id <= 7)       { colors = palettes8[id-1]; count = 8; }
+    else if (id >= 33) { colors = palettes8[id-26]; count = 8; }
     else if (id <= 16) { colors = palettes4[id-8]; count = 4; }
     else if (id <= 24) { colors = palettes1[id-17]; count = 1; }
     else               { colors = palettes2[id-25]; count = 2; }
@@ -2735,15 +2745,15 @@ h1{font-size:23px;letter-spacing:.04em;margin:0}.sub{font-size:12px;color:#8e9db
 .pad.active{background:linear-gradient(145deg,#174a68,#133047);border-color:#55d9ff;box-shadow:inset 0 0 0 1px #55d9ff55,0 6px 0 #071b2b,0 0 18px #28b9fa2e}
 .pad .symbol{width:55px;height:55px;display:grid;place-items:center}.symbol svg{width:52px;height:52px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
 .pad .name{font-size:13px;font-weight:750;letter-spacing:.065em;text-align:center}.pad .hint{font-size:10px;color:#a1afc6;margin-top:-10px}
-.footer{margin-top:auto;padding-top:25px;display:flex;align-items:center;justify-content:space-between;color:#93a2bb;font-size:13px}
-.randomBtn{border:1px solid #38455f;background:#202a40;color:#d9e8ff;min-height:44px;padding:0 15px;border-radius:14px;display:flex;align-items:center;gap:9px;font:600 12px system-ui;letter-spacing:.05em;touch-action:manipulation}.randomBtn.on{background:#174a68;border-color:#55d9ff;color:#fff;box-shadow:0 0 12px #28b9fa44}.randomBtn svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.gear{border:1px solid #38455f;background:#202a40;color:white;width:51px;height:51px;border-radius:15px;display:grid;place-items:center;text-decoration:none}
+.footer{margin-top:auto;padding-top:25px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:center;color:#93a2bb;font-size:13px}
+.randomBtn{border:1px solid #38455f;background:#202a40;color:#d9e8ff;width:100%;height:52px;padding:0 6px;border-radius:14px;display:flex;align-items:center;gap:9px;font:600 12px system-ui;letter-spacing:.05em;touch-action:manipulation}.randomBtn.on{background:#174a68;border-color:#55d9ff;color:#fff;box-shadow:0 0 12px #28b9fa44}.randomBtn svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.gear{border:1px solid #38455f;background:#202a40;color:white;width:100%;height:52px;border-radius:15px;display:grid;place-items:center;text-decoration:none}
 .gear svg{width:25px;height:25px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 [hidden]{display:none!important}
 .gear{cursor:pointer;touch-action:manipulation}
 .paletteGrid{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:4px}
-.paletteTile{border:2px solid #34445f;background:#1c2840;color:#dfeaff;border-radius:7px;padding:3px 1px;min-width:0;cursor:pointer;touch-action:manipulation}
-.paletteTile.selected{border-color:#65dcff;box-shadow:0 0 0 1px #65dcff88}
+.paletteTile{border:2px solid #2366b9;background:#2366b9;color:#fff;border-radius:7px;padding:3px 1px;min-width:0;cursor:pointer;touch-action:manipulation}
+.paletteTile.selected{border-color:#8edcff;box-shadow:0 0 0 2px #8edcff99}
 .paletteSwatch{display:flex;height:23px;border-radius:4px;overflow:hidden}
 .paletteSwatch i{flex:1;min-width:0}
 .paletteLabel{display:block;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}
@@ -2764,7 +2774,7 @@ h1{font-size:23px;letter-spacing:.04em;margin:0}.sub{font-size:12px;color:#8e9db
 .tapBox .tapButton{display:block;width:100%;height:90px;font-size:24px;margin:12px 0}
 #settingsView a{color:#80bdff}
 .saveLed{background:#2366b9;color:white;border:0;border-radius:12px;padding:13px 16px;font:inherit;margin-top:12px}
-</style></head><body><main class="wrap"><header class="top"><div><h1>MusicLED</h1></div><div style="text-align:right"><div id="bpmDisplay" style="font-weight:700;font-size:19px">-- BPM</div><div id="bpmSource" class="sub">AUTO</div></div></header>
+</style></head><body><main class="wrap"><header class="top"><div><h1>MusicLED</h1></div><div id="homeBpm" style="text-align:right"><div id="bpmDisplay" style="font-weight:700;font-size:19px">-- BPM</div><div id="bpmSource" class="sub">AUTO</div></div></header>
 <section id="homeView"><section class="pads" id="pads">
 <button class="pad" data-mode="0" onclick="choose(0)"><span class="symbol"><svg viewBox="0 0 64 64"><path d="M8 39c8-22 16-22 24 0s16 22 24 0"/><path d="M8 24c8-22 16-22 24 0s16 22 24 0"/></svg></span><span class="name">WAVE</span><span class="hint">RAINBOW · STANDARD</span></button>
 <button class="pad" data-mode="1" onclick="choose(1)"><span class="symbol"><svg viewBox="0 0 64 64"><rect x="10" y="40" width="8" height="14" rx="2"/><rect x="23" y="29" width="8" height="25" rx="2"/><rect x="36" y="18" width="8" height="36" rx="2"/><rect x="49" y="9" width="8" height="45" rx="2"/></svg></span><span class="name">VU METER</span><span class="hint">LEVEL</span></button>
@@ -2772,7 +2782,7 @@ h1{font-size:23px;letter-spacing:.04em;margin:0}.sub{font-size:12px;color:#8e9db
 <button class="pad" data-mode="3" onclick="choose(3)"><span class="symbol"><svg viewBox="0 0 64 64"><path d="M9 33h11l7-16 10 31 7-15h11"/><path d="M22 9a25 25 0 1 1-13 43"/></svg></span><span class="name">BPM AUTO</span><span class="hint">WHITE</span></button>
 <button class="pad" data-mode="4" onclick="choose(4)"><span class="symbol"><svg viewBox="0 0 64 64"><path d="M36 5 14 35h16l-3 24 23-34H34z"/></svg></span><span class="name">ENERGY</span><span class="hint">STROBE</span></button>
 <button class="pad" data-mode="5" onclick="choose(5)"><span class="symbol"><svg viewBox="0 0 64 64"><path d="M34 5c4 14-6 18-3 27 6-3 9-9 10-14 19 20 15 37-8 40C10 59 8 42 18 29c1 11 7 13 9 13-5-14 0-27 7-37z"/></svg></span><span class="name">FIRE</span><span class="hint">&amp; SPARKS</span></button>
-</section><footer class="footer"><button type="button" id="randomBtn" class="randomBtn" onclick="randomPress()" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M4 7h3c5 0 5 10 10 10h3m-3-3 3 3-3 3M4 17h3c2 0 3-2 4-4m2-3c1-2 2-3 4-3h3m-3-3 3 3-3 3"/></svg><span>RANDOM</span></button><button type="button" class="gear" onclick="showPalettes()" aria-label="Fargepaletter" title="Fargepaletter"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 20a10 10 0 0 1 20 0" stroke="#f44" stroke-width="3" fill="none"/><path d="M5 20a7 7 0 0 1 14 0" stroke="#ffb733" stroke-width="3" fill="none"/><path d="M8 20a4 4 0 0 1 8 0" stroke="#3edc83" stroke-width="3" fill="none"/><path d="M11 20a1 1 0 0 1 2 0" stroke="#559bff" stroke-width="2" fill="none"/></svg></button><button type="button" class="gear" onclick="showSettings()" aria-label="Innstillinger"><svg viewBox="0 0 24 24"><path d="M10 2h4l.8 2.6 2 .9 2.4-1.2 2.8 2.8-1.2 2.4.9 2L24 12l-2.3 1.5-.9 2 1.2 2.4-2.8 2.8-2.4-1.2-2 .9L14 23h-4l-.8-2.6-2-.9-2.4 1.2L2 17.9l1.2-2.4-.9-2L0 12l2.3-1.5.9-2L2 6.1l2.8-2.8 2.4 1.2 2-.9z" transform="translate(1 1) scale(.91)"/><circle cx="12" cy="12" r="3"/></svg></button></footer></section>
+</section><footer class="footer"><button type="button" id="randomBtn" class="randomBtn" onclick="randomPress()" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M4 7h3c5 0 5 10 10 10h3m-3-3 3 3-3 3M4 17h3c2 0 3-2 4-4m2-3c1-2 2-3 4-3h3m-3-3 3 3-3 3"/></svg><span>RANDOM</span></button><button type="button" class="gear" onclick="showPalettes()" aria-label="Fargepaletter" title="Fargepaletter"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6 5.6 18.4"/></svg></button><button type="button" class="gear" onclick="showSettings()" aria-label="Innstillinger"><svg viewBox="0 0 24 24"><path d="M10 2h4l.8 2.6 2 .9 2.4-1.2 2.8 2.8-1.2 2.4.9 2L24 12l-2.3 1.5-.9 2 1.2 2.4-2.8 2.8-2.4-1.2-2 .9L14 23h-4l-.8-2.6-2-.9-2.4 1.2L2 17.9l1.2-2.4-.9-2L0 12l2.3-1.5.9-2L2 6.1l2.8-2.8 2.4 1.2 2-.9z" transform="translate(1 1) scale(.91)"/><circle cx="12" cy="12" r="3"/></svg></button></footer></section>
 <section id="paletteView" hidden>
 <header class="settingsTop"><button type="button" onclick="showHome()">← Tilbake</button><h2>Fargepaletter</h2></header>
 <div id="paletteGroups"></div><p class="paletteHelp" id="paletteModeName">Velg palett for aktiv effekt.</p><p><button type="button" id="paletteReverseButton" onclick="togglePaletteReverse()">⇅ Snu fargeretning</button></p><p class="paletteHelp" id="paletteStatus"></p><p class="paletteHelp">De fire første palettene er midlertidige globale valg. Andre valg lagres per effekt. LED-fargene aktiveres i steg 2B.</p>
@@ -2832,12 +2842,14 @@ function showRandom(enabled){randomEnabled=enabled;const b=document.getElementBy
 async function syncRandom(){try{const r=await fetch('/api/random-state',{cache:'no-store'});if(!r.ok)return;const d=await r.json();showRandom(d.enabled);highlight(d.mode);waveStyle=d.waveVariant;waveIndex=d.waveColor;vuStyle=d.vuCentered?1:0;vuIndex=d.vuColor;particleStyle=d.particleVariant;particleIndex=d.particleColor;bpmColorIndex=d.bpmColor;energyCount=d.energyFlashes;updateVUHint();updateWaveHint();updateParticleHint();document.querySelector('[data-mode="3"] .hint').textContent=bpmStyle?'HOLD':'BLINK';document.querySelector('[data-mode="4"] .hint').textContent=energyCount+' FLASH'+(energyCount===1?'':'ES');}catch(e){}}
 async function randomPress(){try{const r=await fetch('/api/random-next',{cache:'no-store'});if(r.ok)await syncRandom();}catch(e){}}
 function showSettings(){
+ document.getElementById('homeBpm').hidden=true;
  document.getElementById('paletteView').hidden=true;
  document.getElementById('homeView').hidden=true;
  document.getElementById('settingsView').hidden=false;
  refreshSettings();
 }
 function showHome(){
+ document.getElementById('homeBpm').hidden=false;
  document.getElementById('paletteView').hidden=true;
  document.getElementById('settingsView').hidden=true;
  document.getElementById('homeView').hidden=false;
@@ -2849,13 +2861,21 @@ const paletteGroups=[
  ['Rainbow',['#f22','#fa0','#ff0','#0d5','#09e','#65f','#c0f','#f3a']],
  ['Party',['#f0a','#fa0','#90f','#0df','#f25','#ff0','#0f9','#f0a']],
  ['Ocean',['#001b54','#0077b6','#00b4d8','#90e0ef','#48cae4','#023e8a','#0077b6','#caf0f8']],
- ['Forest',['#123524','#245c35','#3e8b46','#73a942','#b7d35b','#276749','#194d33','#a0b75e']]
+ ['Forest',['#123524','#245c35','#3e8b46','#73a942','#b7d35b','#276749','#194d33','#a0b75e']],
+ ['Midnight Petrol',['#071b2d','#123c50','#17575b','#28695e','#193d52','#142a43','#0a2236','#071b2d']],
+ ['Velvet Lounge',['#260b23','#4a1938','#6a304b','#67402b','#42283e','#2b1737','#35102a','#260b23']],
+ ['Teal / Coral',['#073e55','#087f83','#1aa89a','#c7444e','#e16d51','#a93555','#265b80','#073e55']],
+ ['Cobalt / Copper',['#102a8c','#244bd0','#4a64db','#d16a19','#e38a27','#b64a24','#33449b','#102a8c']]
  ]],
  ['Multicolor',[
  ['Sunset',['#27104e','#702b86','#b33986','#f25f5c','#ff914d','#ffcf70','#f76d39','#38164b']],
  ['Lava',['#350000','#9c1600','#ff4000','#ff8c00','#ffe080','#ff5400','#b32100','#350000']],
  ['Aurora',['#08213e','#007c80','#00bb83','#8bffba','#8a53d6','#1bb1a7','#3b358e','#08213e']],
- ['C9',['#f22525','#ffb600','#0ab64a','#2567ed']]
+ ['C9',['#f22525','#ffb600','#0ab64a','#2567ed']],
+ ['Plum Night',['#120c24','#35224d','#57335e','#66415b','#332f56','#1a2441','#281532','#120c24']],
+ ['Deep Brass',['#071e25','#164048','#275954','#71613d','#59472c','#23434a','#112e3a','#071e25']],
+ ['Indigo / Terracotta',['#172e8b','#3259b4','#548ac4','#bb593e','#d08043','#9b3d55','#3a4d9e','#172e8b']],
+ ['Jade / Berry',['#174b4a','#2b7e69','#47977a','#9e3563','#bd4973','#7a3c77','#245a67','#174b4a']]
  ]],
  ['Fire farger',[
  ['Neon',['#ff00aa','#00e5ff','#9d4edd','#ffee00']],
@@ -2883,9 +2903,9 @@ const paletteGroups=[
  ['Pink / Cyan',['#ff30b4','#ff30b4','#00dbeb','#00dbeb']],
  ['Purple / Green',['#8b45e8','#8b45e8','#30dc79','#30dc79']],
  ['Orange / Teal',['#ff8a28','#ff8a28','#00a6a6','#00a6a6']],
- ['Red / White',['#f5222d','#f5222d','#ffffff','#ffffff']],
+ ['Burgundy / Steel',['#c92d42','#c92d42','#277b9a','#277b9a']],
  ['Gold / Purple',['#ffd046','#ffd046','#7029bd','#7029bd']],
- ['Blue / White',['#2469e8','#2469e8','#ffffff','#ffffff']]
+ ['Navy / Copper',['#284a9b','#284a9b','#b56b39','#b56b39']]
  ]]
 ];
 let paletteSaved=[0,0,0,0,0,0],paletteTemporary=-1,paletteReversed=[false,false,false,false,false,false];
@@ -2896,6 +2916,7 @@ function renderPalettes(){
  reverseButton.textContent=paletteReversed[active]?'⇅ Reversert · trykk for normal':'⇅ Normal · trykk for reversering';
  document.getElementById('paletteModeName').textContent='Aktiv effekt: '+paletteNames[active]+' · Lagret: '+(paletteSaved[active]===0?'DEFAULT':paletteLabel(paletteSaved[active]));
  let id=1;
+ const paletteIds=[[1,2,3,4,33,34,35,36],[5,6,7,8,37,38,39,40],Array.from({length:8},(_,i)=>9+i),Array.from({length:8},(_,i)=>17+i),Array.from({length:8},(_,i)=>25+i)];
  const defaultGroup=document.createElement('section');defaultGroup.className='paletteGroup';
  defaultGroup.innerHTML='<h3>Standard</h3>';
  const defaultBtn=document.createElement('button');defaultBtn.className='paletteTile'+(paletteTemporary<0&&paletteSaved[active]===0?' selected':'');
@@ -2904,23 +2925,23 @@ function renderPalettes(){
  const section=document.createElement('section');section.className='paletteGroup';
  const title=document.createElement('h3');title.textContent=group[0];section.appendChild(title);
  const grid=document.createElement('div');grid.className='paletteGrid';
- group[1].forEach(p=>{
- const pid=id++;const btn=document.createElement('button');
+ group[1].forEach((p,i)=>{
+ const pid=paletteIds[g][i];const btn=document.createElement('button');
  btn.className='paletteTile'+((paletteTemporary>=0?paletteTemporary===pid:paletteSaved[active]===pid)?' selected':'');
  btn.title=p[0];btn.onclick=()=>savePalette(pid);
  const sw=document.createElement('span');sw.className='paletteSwatch';
  p[1].forEach(c=>{const cell=document.createElement('i');cell.style.background=c;sw.appendChild(cell);});
- const label=document.createElement('span');label.className='paletteLabel';label.textContent=p[0];
- btn.appendChild(sw);btn.appendChild(label);grid.appendChild(btn);
+ btn.appendChild(sw);grid.appendChild(btn);
  });section.appendChild(grid);root.appendChild(section);
  });
 }
-function paletteLabel(id){let n=1;for(const group of paletteGroups)for(const p of group[1]){if(n++===id)return p[0];}return 'DEFAULT';}
+function paletteLabel(id){const ids=[[1,2,3,4,33,34,35,36],[5,6,7,8,37,38,39,40],[9,10,11,12,13,14,15,16],[17,18,19,20,21,22,23,24],[25,26,27,28,29,30,31,32]];for(let g=0;g<ids.length;g++){const i=ids[g].indexOf(id);if(i>=0)return paletteGroups[g][1][i][0];}return 'DEFAULT';}
 async function loadPalettes(){try{
  const r=await fetch('/api/palettes',{cache:'no-store'});if(!r.ok)throw Error('Kunne ikke lese paletter');
  const d=await r.json();paletteSaved=d.saved;paletteTemporary=d.temporary;paletteReversed=d.reverse||[false,false,false,false,false,false];renderPalettes();
 }catch(e){document.getElementById('paletteStatus').textContent=e.message;}}
 function showPalettes(){
+ document.getElementById('homeBpm').hidden=true;
  document.getElementById('homeView').hidden=true;
  document.getElementById('settingsView').hidden=true;
  document.getElementById('paletteView').hidden=false;
@@ -2935,7 +2956,7 @@ async function togglePaletteReverse(){try{
 async function savePalette(id){try{
  const r=await fetch('/api/palette?mode='+active+'&id='+id,{method:'POST',cache:'no-store'});
  if(!r.ok)throw Error(await r.text());
- document.getElementById('paletteStatus').textContent=id>0&&id<5?'Midlertidig global palett valgt':'Palett lagret for '+paletteNames[active];
+ document.getElementById('paletteStatus').textContent=((id>=1&&id<=4)||(id>=33&&id<=36))?'Midlertidig global palett valgt':'Palett lagret for '+paletteNames[active];
  await loadPalettes();
 }catch(e){document.getElementById('paletteStatus').textContent='Feil: '+e.message;}}
 
@@ -3127,10 +3148,10 @@ void beginWiFi() {
         for (unsigned i=0;i<m.length();i++) if (!isDigit(m[i])) { webServer.send(400,"text/plain","Invalid mode"); return; }
         for (unsigned i=0;i<p.length();i++) if (!isDigit(p[i])) { webServer.send(400,"text/plain","Invalid palette"); return; }
         int modeId=m.toInt(), paletteId=p.toInt();
-        if (modeId<0 || modeId>=6 || paletteId<0 || paletteId>32) {
+        if (modeId<0 || modeId>=6 || paletteId<0 || paletteId>40) {
             webServer.send(400,"text/plain","Out of range"); return;
         }
-        if (paletteId>=1 && paletteId<=4) {
+        if ((paletteId>=1 && paletteId<=4) || (paletteId>=33 && paletteId<=36)) {
             temporaryGlobalPalette=(int8_t)paletteId;
         } else {
             temporaryGlobalPalette=-1;
@@ -3394,7 +3415,7 @@ void setup() {
     for (uint8_t i=0;i<6;i++) {
         String key = "effect" + String(i);
         uint8_t value = palettePreferences.getUChar(key.c_str(), 0);
-        effectPalette[i] = (value >= 5 && value <= 32) ? value : 0;
+        effectPalette[i] = (value >= 5 && value <= 40) ? value : 0;
         String reverseKey="reverse"+String(i);
         paletteReverse[i]=palettePreferences.getBool(reverseKey.c_str(),false);
     }
