@@ -1826,28 +1826,43 @@ static const uint32_t paletteColors[32][8] = {
  {0xffd046,0xffd046,0xffd046,0xffd046,0x7029bd,0x7029bd,0x7029bd,0x7029bd},
  {0x2469e8,0x2469e8,0x2469e8,0x2469e8,0xffffff,0xffffff,0xffffff,0xffffff}
 };
-uint32_t paletteColorAt(uint8_t id, uint16_t position, uint32_t beat) {
-    const uint32_t* colors=paletteColors[id-1];
-    uint8_t idx;
-    if (id>=25) idx=(beat + position/12)%2 ? 4 : 0; // alternate dual colors, not fixed strip halves
-    else if (id>=17 && id<=24) idx=7; // mono: strongest shade only; no variant-specific default
-    else idx=(uint8_t)((position*8UL/max(1,(int)NUM_LEDS) + beat)%8);
-    return colors[idx];
+// Fixed spatial gradient from LED 0 to LED NUM_LEDS-1, with no repetition.
+// 8-color palettes use eight stops, 4-color palettes four, 2-color palettes two.
+// Single-color palettes use their strongest shade; intensity is handled separately.
+uint32_t paletteColorAt(uint8_t id, uint16_t position) {
+    const uint32_t* colors = paletteColors[id-1];
+    if (id >= 17 && id <= 24) return colors[3];
+    const uint8_t count = id >= 25 ? 2 : id >= 8 ? 4 : 8;
+    const uint16_t maxPosition = NUM_LEDS > 1 ? NUM_LEDS-1 : 1;
+    const uint32_t scaled = (uint32_t)position * (count-1) * 256UL / maxPosition;
+    const uint8_t index = min((int)(scaled >> 8), (int)count-1);
+    const uint8_t next = min((int)index+1, (int)count-1);
+    const uint8_t fraction = (uint8_t)(scaled & 255);
+    const uint8_t nextIndex = id >= 25 ? next*4 : next;
+    const uint8_t firstIndex = id >= 25 ? index*4 : index;
+    const uint32_t from = colors[firstIndex], to = colors[nextIndex];
+    uint8_t r = (((from>>16)&255)*(256-fraction) + ((to>>16)&255)*fraction) >> 8;
+    uint8_t g = (((from>>8)&255)*(256-fraction) + ((to>>8)&255)*fraction) >> 8;
+    uint8_t b = ((from&255)*(256-fraction) + (to&255)*fraction) >> 8;
+    return strip.Color(r,g,b);
 }
 void applyPaletteFrame(LedMode effect) {
-    if (effect==ENERGY_STROBE) return; // Energy is always white.
-    uint8_t id=activePalette((uint8_t)effect);
-    if (!id || id>32) return;
-    for (uint16_t i=0;i<NUM_LEDS;i++) {
-        uint32_t old=strip.getPixelColor(i);
-        uint8_t r=(old>>16)&255,g=(old>>8)&255,b=old&255;
-        uint8_t intensity=max(r,max(g,b));
+    if (effect == ENERGY_STROBE) return; // Always white.
+    uint8_t id = activePalette((uint8_t)effect);
+    if (!id || id > 32) return; // DEFAULT retains original effect colors.
+    for (uint16_t i=0; i<NUM_LEDS; i++) {
+        uint32_t old = strip.getPixelColor(i);
+        uint8_t r=(old>>16)&255, g=(old>>8)&255, b=old&255;
+        uint8_t intensity = max(r,max(g,b));
         if (!intensity) continue;
-        uint32_t c;
-        if (effect==VU_METER && id==0) c=old;
-        else if (effect==VU_METER && id==8) c=(i<NUM_LEDS/2 ? 0x00ff00 : i<NUM_LEDS*3/4 ? 0xffff00 : 0xff0000);
-        else c=paletteColorAt(id,i,bpmFlashCount);
-        strip.setPixelColor(i,strip.Color(((c>>16)&255)*intensity/255,((c>>8)&255)*intensity/255,(c&255)*intensity/255));
+        // Square the effect envelope: dark levels remain dark, peaks reach full color.
+        const uint16_t level = ((uint32_t)intensity*intensity + 127) / 255;
+        uint32_t c = paletteColorAt(id,i);
+        strip.setPixelColor(i, strip.Color(
+            ((c>>16)&255)*level/255,
+            ((c>>8)&255)*level/255,
+            (c&255)*level/255
+        ));
     }
 }
 
