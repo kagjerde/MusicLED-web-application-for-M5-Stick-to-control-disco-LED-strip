@@ -2393,322 +2393,33 @@ void ledTask(void* parameter) {
 // DISPLAY
 // =====================================================
 
-void drawBar(
-    int x,
-    int y,
-    int w,
-    int h,
-    float value,
-    uint16_t color
-) {
-    value = constrain(
-        value,
-        0.0f,
-        1.0f
-    );
-
-    canvas.fillRoundRect(
-        x, y, w, h, 3,
-        TFT_DARKGREY
-    );
-
-    int filled =
-        (int)(w * value);
-
-    if (filled > 0) {
-        canvas.fillRoundRect(
-            x, y,
-            filled, h, 3,
-            color
-        );
-    }
-}
-
+// Static device status only; the full GUI lives on the phone.
+// Compare status before touching the display so idle screens cost no SPI writes.
 void updateScreen() {
+    static String previousStatus;
+    String variant;
+    switch (mode) {
+        case RAINBOW_MUSIC: variant = "Wave " + String((int)waveVariant + 1); break;
+        case VU_METER: variant = vuCentered ? "Center" : "Normal"; break;
+        case COMET_BEAT: variant = "Particles " + String((int)particleVariant + 1); break;
+        case BPM_AUTO: variant = bpmDisplayVariant ? "Hold" : "Blink"; break;
+        case ENERGY_STROBE: variant = String((int)energyFlashVariant) + " flashes"; break;
+        case FIRE_SPARKS: variant = fireGlitterEnabled ? "With blink" : "Standard"; break;
+    }
+    bool setupMode = (WiFi.getMode() & WIFI_AP) != 0;
+    String address = setupMode ? WiFi.softAPIP().toString() : WiFi.localIP().toString();
+    String status = String(modeNames[mode]) + "\n" + variant + "\n" +
+        (setupMode ? "WiFi: MusicLED-Setup" : "WiFi: connected") + "\n" + address +
+        (randomPlay ? "\nRandom: ON" : "\nRandom: OFF");
+    if (status == previousStatus) return;
+    previousStatus = status;
     canvas.fillSprite(TFT_BLACK);
     canvas.setTextColor(TFT_WHITE);
     canvas.setTextSize(1);
-
-    int w = screenW - 20;
-
     canvas.setCursor(5, 5);
-    canvas.print(modeNames[mode]);
-
-    canvas.drawFastHLine(
-        5, 19,
-        screenW - 10,
-        TFT_DARKGREY
-    );
-
-    if (mode == RAINBOW_MUSIC) {
-        for (
-            int x = 0;
-            x < w;
-            x += 3
-        ) {
-            uint16_t hue = (uint16_t)(
-                rainbowPhase * 256 +
-                x * 65536.0f / w
-            );
-
-            uint32_t rgb =
-                strip.gamma32(
-                    strip.ColorHSV(hue)
-                );
-
-            uint16_t color =
-                canvas.color565(
-                    (rgb >> 16) & 255,
-                    (rgb >> 8) & 255,
-                    rgb & 255
-                );
-
-            int h =
-                8 + (int)(vu * 22);
-
-            canvas.fillRect(
-                10 + x,
-                28,
-                3,
-                h,
-                color
-            );
-        }
-
-        canvas.setCursor(10, 65);
-        canvas.printf(
-            "RMS %.0f  GAIN %.1fx",
-            rms,
-            agcGain
-        );
-
-        drawBar(
-            10, 82,
-            w, 12,
-            vu,
-            TFT_GREEN
-        );
-    }
-    else if (mode == VU_METER) {
-        canvas.setCursor(10, 25);
-        canvas.print("COLOR: ");
-        canvas.print(
-            vuColorNames[vuColorMode]
-        );
-
-        if (
-            vuColorMode == VU_AUTO
-        ) {
-            canvas.setCursor(10, 39);
-            canvas.print("ACTIVE: ");
-            canvas.print(
-                autoColorNames[
-                    autoColorIndex
-                ]
-            );
-        }
-
-        const int segments = 34;
-        const int gap = 2;
-
-        int segW =
-            (w -
-            (segments - 1) * gap) /
-            segments;
-
-        float displayVU =
-            expandVU(vu);
-
-        float displayPeak =
-            expandVU(vuPeak);
-
-        int active = constrain(
-            (int)(
-                displayVU * segments
-            ),
-            0,
-            segments
-        );
-
-        int peakSeg = constrain(
-            (int)(
-                displayPeak *
-                (segments - 1)
-            ),
-            0,
-            segments - 1
-        );
-
-        for (
-            int i = 0;
-            i < segments;
-            i++
-        ) {
-            int x =
-                10 +
-                i * (segW + gap);
-
-            int ledIndex =
-                i * (NUM_LEDS - 1) /
-                (segments - 1);
-
-            uint16_t c =
-                i < active
-                ? vuScreenColorAt(
-                    ledIndex
-                )
-                : TFT_DARKGREY;
-
-            if (
-                i == peakSeg &&
-                vuPeak > 0.01f
-            ) {
-                c =
-                    vuScreenColorAt(
-                        ledIndex
-                    );
-            }
-
-            canvas.fillRect(
-                x,
-                55,
-                segW,
-                19,
-                c
-            );
-        }
-
-        canvas.setCursor(10, 82);
-        canvas.printf(
-            "RMS %.0f GAIN %.1fx",
-            rms,
-            agcGain
-        );
-
-        canvas.setCursor(10, 98);
-        canvas.printf(
-            "VU %d%% PEAK %d%%",
-            (int)(
-                displayVU * 100
-            ),
-            (int)(
-                displayPeak * 100
-            )
-        );
-    }
-    else if (mode == COMET_BEAT) {
-        canvas.setCursor(10, 27);
-        canvas.print("PARTICLES");
-        canvas.setCursor(10, 48);
-        if (manualBPM) canvas.printf("MANUAL %.1f", manualBPMValue);
-        else if (estimatedBPM > 0) canvas.printf("BPM %.1f", estimatedBPM);
-        else canvas.print("SEARCHING BPM");
-        canvas.setCursor(10, 70);
-        canvas.print(bpmLocked ? "LOCKED" : "LISTENING");
-    }
-    else if (mode == BPM_AUTO) {
-        canvas.setCursor(10, 27);
-
-        if (manualBPM || estimatedBPM > 0.0f) {
-            canvas.printf(
-                "BPM: %.1f",
-                manualBPM ? manualBPMValue : estimatedBPM
-            );
-        }
-        else {
-            canvas.print(
-                "BPM: SEARCHING"
-            );
-        }
-
-        canvas.setCursor(10, 44);
-        canvas.print(
-            bpmLocked
-            ? "STATUS: LOCKED"
-            : "STATUS: SEARCHING"
-        );
-
-        canvas.setCursor(10, 61);
-        canvas.printf(
-            "CONF: %u / 10",
-            (unsigned)
-            bpmConfidence
-        );
-
-        drawBar(
-            10,
-            78,
-            w,
-            10,
-            bpmConfidence /
-            10.0f,
-            TFT_GREEN
-        );
-
-        canvas.setCursor(10, 94);
-        canvas.printf(
-            "BEATS:%lu FLASH:%lu",
-            (unsigned long)
-            bpmDetectedBeats,
-            (unsigned long)
-            bpmFlashCount
-        );
-    }
-    else if (mode == ENERGY_STROBE) {
-        canvas.setCursor(10, 27);
-        canvas.print("ENERGY");
-
-        drawBar(
-            10,
-            43,
-            w,
-            14,
-            energyStrobeValue,
-            TFT_WHITE
-        );
-
-        canvas.setCursor(10, 65);
-        canvas.printf(
-            "AVG %.2f RISE %.2f",
-            energyStrobeAverage,
-            energyStrobeRise
-        );
-
-        canvas.setCursor(10, 82);
-        canvas.printf(
-            "TRIGGERS: %lu",
-            (unsigned long)
-            energyTriggerCount
-        );
-
-        canvas.setCursor(10, 99);
-        canvas.print(
-            "DOUBLE FLASH"
-        );
-    }
-
-    else if (mode == FIRE_SPARKS) {
-        canvas.setCursor(10, 35);
-        canvas.print("FIRE & SPARKS");
-        canvas.setCursor(10, 58);
-        canvas.print("MUSIC REACTIVE");
-        canvas.setCursor(10, 81);
-        canvas.print("FLAME + SPARKS");
-    }
-
-    canvas.setTextColor(
-        TFT_LIGHTGREY
-    );
-
-    canvas.setCursor(
-        5,
-        screenH - 12
-    );
-
-    canvas.print(
-        "A: Mode  B: Color"
-    );
-
+    canvas.print(status);
+    canvas.setCursor(5, screenH - 12);
+    canvas.print("A: Mode  B: Variant");
     canvas.pushSprite(0, 0);
 }
 
@@ -3300,6 +3011,7 @@ void beginWiFi() {
     WiFi.setHostname(HOST_NAME);
     if (!ssid.isEmpty()) {
         WiFi.mode(WIFI_STA);
+        WiFi.setSleep(false); // Prioritize interactive controls over Wi-Fi power saving.
         WiFi.begin(ssid.c_str(), password.c_str());
         Serial.print("Connecting to "); Serial.println(ssid);
         uint32_t started = millis();
@@ -3611,22 +3323,15 @@ void handleButtons() {
         randomPlay = false;
         requestedMode = ((int)mode + 1) % 6;
     }
-    if (M5.BtnB.wasPressed()) randomPlay = false;
-    if (mode == ENERGY_STROBE && M5.BtnB.wasPressed()) {
-        requestedEnergyCycle = true;
-    }
-
-    if (mode == COMET_BEAT && M5.BtnB.wasPressed()) {
-        particleColor=(particleColor+1)%6;
-    }
-    if (
-        mode == VU_METER &&
-        M5.BtnB.wasPressed()
-    ) {
-        nextVUColor();
-
-        silenceStart = 0;
-        silenceTriggered = false;
+    if (!M5.BtnB.wasPressed()) return;
+    randomPlay = false;
+    switch (mode) {
+        case RAINBOW_MUSIC: requestedWaveVariant = true; break;
+        case VU_METER: requestedVUVariant = true; break;
+        case COMET_BEAT: requestedParticleVariant = true; break;
+        case BPM_AUTO: bpmDisplayVariant = 1 - bpmDisplayVariant; break;
+        case ENERGY_STROBE: requestedEnergyCycle = true; break;
+        case FIRE_SPARKS: fireGlitterEnabled = !fireGlitterEnabled; break;
     }
 }
 
@@ -3740,6 +3445,7 @@ void setup() {
 // =====================================================
 
 void loop() {
+    handleWeb(); // Apply web commands in this iteration, before audio processing.
     M5.update();
     handleButtons();
     if (requestedMode >= 0) {
@@ -3803,7 +3509,7 @@ void loop() {
     uint32_t now = millis();
 
     if (
-        now - lastScreen >= 40
+        now - lastScreen >= 250
     ) {
         lastScreen = now;
         updateScreen();
