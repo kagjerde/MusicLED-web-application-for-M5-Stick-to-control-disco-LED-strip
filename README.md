@@ -1,102 +1,242 @@
 # MusicLED 🎵
 
-**Musikkstyrt WS2812 LED-stripe med M5StickS3 og mobilvennlig webkontroll.**
+**Music-reactive WS2812 LED strip controller for M5StickS3, with a mobile web interface.**
 
-MusicLED bruker mikrofonen i M5StickS3 til å styre en adresserbar LED-stripe. Effekter velges fra en telefon på samme Wi-Fi-nettverk.
+MusicLED uses the built-in microphone on the M5StickS3 to control an addressable LED strip. Select effects, change variants and choose color palettes from a phone on the same Wi-Fi network. No phone app or cloud service is required.
 
-**Stabil versjon: v2.0 – Random Play** (testet og godkjent på M5StickS3).
+This README describes the current `master` branch. The mobile interface still contains some Norwegian labels; the documentation below uses English names and includes the relevant labels where useful.
 
-## Skjermbilder fra v2.0
+## Features
 
-**Hovedskjerm:** Seks effekter, BPM-status og Random Play.
+- Six main effects with multiple animation variants.
+- 48 selectable palettes, plus the original effect colors.
+- Temporary global palettes, individual effect palettes and palette direction reversal.
+- Automatic BPM detection, manual tempo and TAP BEAT.
+- Random Play with timed switching during pauses in the music.
+- Adjustable brightness and audio response.
+- Configurable LED count and data GPIO.
+- Wi-Fi setup access point, saved network credentials and local hostname.
+- Mobile home-screen shortcut with a MusicLED icon.
 
-![MusicLED v2.0 – hovedskjerm](docs/images/musicled-v2-main.png)
+## Screenshots
 
-**Innstillinger:** Dynamikk, lysstyrke, BPM-kontroll, LED-antall, GPIO og nettverk.
+The following spaces are reserved for new screenshots of the current interface.
 
-![MusicLED v2.0 – innstillinger](docs/images/musicled-v2-settings.png)
+### Main screen
 
-## Effekter
+Six effect pads, animation variant labels, BPM status, palette access and Random Play.
 
-| Hovedmodus | Beskrivelse |
+> **Screenshot coming soon:** `docs/images/musicled-main.png`
+
+<!-- After uploading the image, remove this comment wrapper:
+<img src="docs/images/musicled-main.png" alt="MusicLED main screen with six effect pads and BPM status" width="320">
+-->
+
+### Color palettes
+
+Palette groups, the active selection, original colors and palette direction controls.
+
+> **Screenshot coming soon:** `docs/images/musicled-palettes.png`
+
+<!-- After uploading the image, remove this comment wrapper:
+<img src="docs/images/musicled-palettes.png" alt="MusicLED color palette selection" width="320">
+-->
+
+### Settings
+
+Audio response, brightness, automatic/manual BPM, TAP BEAT, LED configuration and network access.
+
+> **Screenshot coming soon:** `docs/images/musicled-settings.png`
+
+<!-- After uploading the image, remove this comment wrapper:
+<img src="docs/images/musicled-settings.png" alt="MusicLED settings screen" width="320">
+-->
+
+### Hardware and LED effects
+
+M5StickS3, the connected strip and an example of an effect in use.
+
+> **Photo coming soon:** `docs/images/musicled-hardware.jpg`
+
+<!-- After uploading the image, remove this comment wrapper:
+<img src="docs/images/musicled-hardware.jpg" alt="M5StickS3 MusicLED controller and LED strip" width="640">
+-->
+
+To add images later, upload them to [docs/images](docs/images) using the filenames above, then uncomment the matching `<img>` line and remove its “coming soon” notice. Portrait screenshots are displayed at 320 pixels wide.
+
+<details>
+<summary>Earlier interface: v2.0 screenshots</summary>
+
+These images show the earlier interface and do not include the current palette controls.
+
+**Main screen**
+
+<img src="docs/images/musicled-v2-main.png" alt="Earlier MusicLED v2.0 main screen" width="320">
+
+**Settings**
+
+<img src="docs/images/musicled-v2-settings.png" alt="Earlier MusicLED v2.0 settings screen" width="320">
+
+</details>
+
+## Effects
+
+| Effect | Variants and behavior |
 |---|---|
-| **Wave** | Standard regnbueeffekt, Top, Bottom og Ping Pong. Løpelys kan starte på registrerte basslag. |
-| **VU Meter** | Normal nivåmåler eller Center VU, som vokser fra midten mot endene. |
-| **Particles** | Bass Explosion, Diffusion, Breathe, Streamer, Bouncing Balls og Fireworks. |
-| **BPM Auto** | Lysblink som følger registrert eller manuelt tempo. |
-| **Energy Strobe** | Musikksynkroniserte blink med valg av antall blink per slag. |
-| **Fire & Sparks** | Flamme med musikkstyrte gnister. |
+| **Wave** | Standard, Top, Bottom and Ping Pong. Moving wave variants respond to detected beats. |
+| **VU Meter** | Normal or Center layout, with a peak marker. Center grows outward from the middle of the strip. |
+| **Particles** | Bass Explosion, Diffusion, Breathe, Streamer, Bouncing Balls and Fireworks. |
+| **BPM Auto** | Flash or Solid. Flash produces short beat pulses; Solid holds the color between beats while music is active. |
+| **Energy Strobe** | Music-reactive bursts with 1, 2, 3 or 4 flashes. |
+| **Fire & Sparks** | Standard flame or With Blink, which adds music-reactive sparkles. |
 
-### Particles
+### Particle variants
 
-- **Bass Explosion:** Lyspulser fra midten og ut til begge ender.
-- **Diffusion:** Brede, myke fargefelt som sprer seg.
-- **Breathe:** Hele stripen pulserer med musikken.
-- **Streamer:** Bevegelige lysstrømmer.
-- **Bouncing Balls:** Lysballer skytes opp fra LED 0 og spretter med gravitasjon og varierende høyde.
-- **Fireworks:** Hvit rakett skytes opp fra LED 0 og eksploderer i fargede fragmenter, med varierende høyde og spredning.
+- **Bass Explosion:** Pulses travel outward from the center.
+- **Diffusion:** Light spreads outward from the center.
+- **Breathe:** The strip brightness follows the music envelope.
+- **Streamer:** Moving light trails.
+- **Bouncing Balls:** Particles launch from LED 0 and bounce with gravity and varying heights.
+- **Fireworks:** White rockets launch from LED 0 and burst into colored fragments, with varying launch heights and overlapping rockets.
 
-### Betjening
+## Mobile controls
 
-| Handling | Resultat |
+| Action | Result |
 |---|---|
-| Trykk på en av de seks effektknappene | Velger effekt og avslutter eventuell Random Play |
-| Enkelttrykk på aktiv effektknapp | Bytter farge eller tilgjengelig spesialvalg |
-| Dobbelttrykk på Wave, VU Meter eller Particles | Bytter undervariant |
-| Trykk på **RANDOM** | Starter tilfeldig effektvalg |
-| Trykk på **RANDOM** igjen | Velger en ny tilfeldig kombinasjon med en gang |
-| Trykk på tannhjulet | Åpner innstillinger |
+| Tap an effect pad | Selects that effect and exits Random Play. |
+| Tap the active effect pad again | Cycles its animation variant. No double tap is needed. |
+| Tap the palette/paintbrush button | Opens the color palette screen for the selected effect. |
+| Tap **RANDOM** | Starts Random Play and selects a random effect combination. |
+| Tap **RANDOM** again | Immediately selects another random combination. |
+| Tap the gear button | Opens settings. |
+| Tap the back button (**Tilbake**) | Returns to the main screen. |
 
-## Random Play (v2.0)
+The active pad shows the selected animation variant. Use the palette screen to change colors separately from the animation.
 
-Den lille **RANDOM**-knappen nederst på hovedskjermen starter automatisk effektvalg.
+## Color palettes
 
-- Første trykk aktiverer Random og velger en tilfeldig effekt, variant og farge.
-- Neste trykk velger umiddelbart en ny kombinasjon.
-- Automatisk bytte skjer **først etter minst tre minutter med gjeldende effekt OG minst tre sekunder sammenhengende stillhet**.
-- Et manuelt valg av hovedmodus avslutter Random.
-- Samme kombinasjon velges ikke to ganger etter hverandre.
+There are **48 palette choices**, arranged in five groups, plus a default option for the original effect colors.
 
-## Maskinvare
+| Group | Choices | Purpose |
+|---|---:|---|
+| Temporary / all effects | 8 | Rainbow, Party, Ocean, Forest, Midnight Petrol, Velvet Lounge, Teal / Coral and Cobalt / Copper. |
+| Multicolor | 16 | Includes Sunset, Lava, Aurora, C9, Plum Night, Deep Brass, Fire Flames, Explode and several party palettes. |
+| Four colors | 8 | Neon, Tropical, Icefire, Retro, Candy, Autumn, Night and Vintage. |
+| Single color / shades | 8 | Red, Blue, Green, Purple, Amber, Cyan, Pink and White. |
+| Two colors / 50–50 | 8 | Includes Red / Blue, Blue / Gold, Pink / Cyan and other paired colors. |
 
-- **M5StickS3** (ESP32-S3), med innebygd mikrofon og skjerm
-- **WS2812-kompatibel LED-stripe**, standard 68 LED-er
-- **Datapin:** GPIO1 som standard; LED-antall og GPIO kan konfigureres i innstillingene
-- **Ekstern regulert 5 V strømforsyning** til LED-stripen
+### How palette selection works
 
-### Kobling
+- **Outside Random Play:** The first eight palettes are temporary global overrides. Other palette choices are assigned to the currently selected effect.
+- **Default:** Returns the selected effect to its original colors and clears the temporary global override.
+- **Reverse:** Reverses the palette direction for the selected effect where the renderer uses a directional palette.
+- **During Random Play:** Starting Random keeps the current palette. Any palette selected while Random is running applies across its effects. The BPM Flash/Solid choice is retained.
+- **Appearance:** Effects use palettes differently: for example, some use a spatial gradient, while moving particles can keep a selected palette color throughout their lifetime. Screen previews and physical LED colors may differ.
 
-```text
-M5StickS3 GPIO1  ─────────── DIN på WS2812
-M5StickS3 GND    ─────┬───── GND på WS2812
-                      │
-5 V strømforsyning − ─┘
-5 V strømforsyning + ─────── +5V på WS2812
+## Random Play
+
+Random Play selects effects and supported subvariants without immediately repeating the same combination.
+
+An automatic change requires **both**:
+
+1. At least **three minutes** with the current selection.
+2. At least **three seconds without detected musical activity**, after activity has been detected.
+
+Continuous music can therefore keep the same effect running for longer than three minutes. Press **RANDOM** again to switch immediately. Selecting an effect manually exits Random Play.
+
+## Hardware
+
+| Item | Details |
+|---|---|
+| Controller | **M5StickS3**, ESP32-S3, with built-in microphone and display. |
+| LED strip | **5 V WS2812-compatible**, individually addressable LEDs. |
+| Default LED count | **62**; configurable from **1 to 300**. |
+| Default data output | **GPIO1**. |
+| Default brightness | **150 / 255**. |
+| Strip power | External regulated **5 V** supply sized for the connected strip. |
+
+The hardware target is M5StickS3. The PlatformIO configuration uses the `esp32-s3-devkitc-1` board definition with project-specific memory and build settings.
+
+### Wiring
+
+| From | To |
+|---|---|
+| M5StickS3 GPIO1 | LED strip **DIN** |
+| M5StickS3 GND | LED strip GND and power supply negative |
+| External 5 V supply positive | LED strip +5 V |
+
+Connect a common ground and use the strip's **DIN**, not DOUT. Power the strip from the external supply. A data-line series resistor, a capacitor at the strip power input and a suitable logic-level shifter can help provide a reliable installation.
+
+Choose a physically available, unused pin if changing GPIO. GPIO19 and GPIO20 are excluded from the settings because they are used for USB on ESP32-S3.
+
+## Getting started
+
+1. Install **Visual Studio Code** and the **PlatformIO IDE** extension.
+2. Clone this repository and open its project folder:
+
+   ```bash
+   git clone https://github.com/kagjerde/MusicLED-web-application-for-M5-Stick-to-control-disco-LED-strip.git
+   cd MusicLED-web-application-for-M5-Stick-to-control-disco-LED-strip
+   ```
+
+3. Check [platformio.ini](platformio.ini). The upload and monitor ports are currently set to `COM5`; change them for your computer, or remove those settings to allow automatic port detection.
+4. Build and upload using PlatformIO. The environment is `m5stack-sticks3`.
+5. On first boot, connect your phone to **MusicLED-Setup**, password **MusicLED123**.
+6. Open **http://192.168.4.1/** if the setup page does not open automatically.
+7. Select your **2.4 GHz Wi-Fi network**, enter its password and save. The device restarts and remembers the credentials.
+8. Reconnect your phone to the same network and open **http://musicled.local/**. If the hostname does not resolve, use the device IP printed in the serial monitor at **115200 baud**.
+
+Optional PlatformIO CLI commands:
+
+```bash
+pio run -e m5stack-sticks3
+pio run -e m5stack-sticks3 -t upload
+pio device monitor -b 115200
 ```
 
-**Viktig:** Bruk felles jord. Ikke forsyn hele LED-stripen fra M5StickS3. Kontroller at du bruker `DIN`, ikke `DOUT`. Seriemotstand på datalinjen og kondensator ved stripeinngangen anbefales; vurder nivåskifter dersom 3,3 V datasignal ikke er stabilt.
+On iPhone, open the main page in Safari and use **Share → Add to Home Screen** for a MusicLED shortcut with its own icon.
 
-## Kom i gang
+The setup password is defined as `SETUP_PASSWORD` in [src/main.cpp](src/main.cpp). Change it before sharing an installation. The web controls have no authentication and are intended for a trusted local network.
 
-1. Installer **Visual Studio Code** med **PlatformIO**.
-2. Åpne prosjektmappen og kontroller `platformio.ini`.
-3. Bygg prosjektet (**Build**) og last det opp til M5StickS3 (**Upload**).
-4. Ved første oppstart: koble telefonen til **MusicLED-Setup** med passord **MusicLED123**.
-5. Åpne `http://192.168.4.1` og konfigurer Wi-Fi.
-6. Åpne **http://musicled.local/** fra en enhet på samme nettverk. Dersom mDNS ikke fungerer, bruk enhetens IP-adresse.
+## Settings and diagnostics
 
-> **Sikkerhet:** Endre standardpassordet for oppsett-AP før vanlig bruk. Webkontrollen er laget for et betrodd lokalnettverk, ikke direkte eksponering mot internett.
+| Setting | Function |
+|---|---|
+| Dynamics (**Dynamikk**) | Adjusts audio response from 0–100%; 50% is the normal baseline. |
+| Brightness (**Lysstyrke**) | Adjusts LED brightness from 1–255. |
+| BPM Auto / Manual | Uses the detected tempo or a manually tapped tempo. |
+| **TAP BEAT** | Sets manual BPM by repeated taps. |
+| Reset (**Nullstill**) | Clears the tap history. |
+| LED count and GPIO | Saves strip configuration and restarts the device. |
+| Network setup | Opens the Wi-Fi configuration page. |
 
-For iPhone så kan du åpne linken i Safari og trykke DEL for å legge den på desktop slik at den kommer i fullskjerm modus, med eget icon for MusicLED.
+The palette page also includes a live **HEX color test** for three strip zones. It temporarily overrides the music effects, allowing colors to be checked directly on the LEDs. Use the restore-music control to return to the normal effects.
 
-## Innstillinger
+### Physical buttons and device display
 
-Innstillingssiden åpnes med tannhjulet. Her kan du justere **dynamikk/lydfølsomhet**, **lysstyrke**, **BPM AUTO/MANUAL** (med TAP BEAT), **LED-antall (1–300)** og **ESP32 GPIO-datapin**. Nederst finner du nettverksoppsett og lenke til kildekoden. Endring av LED-oppsett lagres og krever omstart.
+In the current `master` firmware:
 
-## Teknologi
+- **Button A:** Cycles the six main effects.
+- **Button B:** Cycles legacy colors in VU Meter and Particles, or the flash count in Energy Strobe.
+- The built-in display shows effect information and visualizations. The phone provides the full palette and settings interface.
 
-ESP32-S3 · Arduino · PlatformIO · M5Unified · Adafruit NeoPixel · arduinoFFT · Wi-Fi · WebServer · mDNS
+## Troubleshooting
 
----
+- **No LED output:** Check the 5 V supply, common ground, selected GPIO, LED count and strip input direction.
+- **Incorrect or unstable colors:** Check the data connection and power supply, and consider a logic-level shifter.
+- **Cannot open musicled.local:** Use the IP address from the serial monitor and check that the phone is on the same local network.
+- **An effect does not react as expected:** Check microphone placement, dynamics and the selected BPM mode. Automatic tempo detection depends on the music.
+- **Strip remains static:** Check whether the HEX color test is active and restore music mode.
+- **Random does not advance:** It waits for both the minimum duration and a pause in detected musical activity.
 
-Laget som et hobbyprosjekt for musikkstyrt LED-belysning.
+## Project structure
+
+| Path | Contents |
+|---|---|
+| [src/main.cpp](src/main.cpp) | Audio analysis, LED effects, web interface, settings and Wi-Fi setup. |
+| [platformio.ini](platformio.ini) | PlatformIO target, dependencies and build configuration. |
+| [docs/images](docs/images) | Screenshots and documentation images. |
+
+Built with **Arduino**, **M5Unified**, **Adafruit NeoPixel**, **arduinoFFT**, Wi-Fi, WebServer and mDNS.
+
+MusicLED is a hobby project for music-reactive lighting.
