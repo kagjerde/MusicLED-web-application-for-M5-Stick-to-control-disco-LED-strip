@@ -87,6 +87,8 @@ M5StickS3 GND    ─────┬───── GND på WS2812
 
 > **Sikkerhet:** Endre standardpassordet for oppsett-AP før vanlig bruk. Webkontrollen er laget for et betrodd lokalnettverk, ikke direkte eksponering mot internett.
 
+For iPhone så kan du åpne linken i Safari og trykke DEL for å legge den på desktop slik at den kommer i fullskjerm modus, med eget icon for MusicLED.
+
 ## Innstillinger
 
 Innstillingssiden åpnes med tannhjulet. Her kan du justere **dynamikk/lydfølsomhet**, **lysstyrke**, **BPM AUTO/MANUAL** (med TAP BEAT), **LED-antall (1–300)** og **ESP32 GPIO-datapin**. Nederst finner du nettverksoppsett og lenke til kildekoden. Endring av LED-oppsett lagres og krever omstart.
